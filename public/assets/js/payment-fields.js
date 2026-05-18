@@ -3,14 +3,14 @@
 
     var section = document.getElementById('patientPaymentSection');
     var amountInput = document.getElementById('payment_amount');
-    var detailsBlock = document.getElementById('paymentDetailsFields');
+    var detailCols = section ? section.querySelectorAll('.payment-detail-col') : [];
     var partialField = document.getElementById('paymentPartialField');
     var paidInput = document.getElementById('payment_paid_amount');
     var methodSelect = document.getElementById('payment_method');
     var statusInputs = document.querySelectorAll('.payment-status-input');
     var gstSummary = document.getElementById('paymentGstSummary');
 
-    if (!amountInput || !detailsBlock) {
+    if (!amountInput || !detailCols.length) {
         return;
     }
 
@@ -91,7 +91,9 @@
     function updatePaymentVisibility() {
         var showDetails = parseAmount() > 0;
 
-        detailsBlock.classList.toggle('d-none', !showDetails);
+        detailCols.forEach(function (col) {
+            col.classList.toggle('d-none', !showDetails);
+        });
         setDetailRequired(showDetails);
         updateGstSummary();
 

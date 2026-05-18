@@ -62,7 +62,7 @@ return [
   'reception.dashboard.recent' => 'Recently registered',
   'reception.dashboard.empty' => 'No patients registered yet.',
   'reception.sort.sort_by' => 'Sort by :column',
-  'reception.error.database' => 'Database is not set up. Please run sql/schema.sql first.',
+  'reception.error.database' => 'Database is not set up. Run: php scripts/install_db.php',
 
   // Patient
   'patient.register.title' => 'Register patient',

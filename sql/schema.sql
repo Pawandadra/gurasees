@@ -1,7 +1,15 @@
--- Gur Asees Ayurveda — database schema
--- Run: php scripts/install_db.php
+-- Gur Asees Ayurveda — complete database schema
+--
+-- Fresh install:
+--   1. Create the MySQL database and set credentials in .env
+--   2. php scripts/install_db.php
+--   3. php scripts/seed_users.php
 
 SET NAMES utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- Users (admin, manager, receptionist)
+-- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -14,6 +22,10 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY uk_username (username),
     INDEX idx_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Patients
+-- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS patients (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -36,6 +48,10 @@ CREATE TABLE IF NOT EXISTS patients (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Symptoms (manager-defined) and patient links
+-- ---------------------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS symptoms (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     label VARCHAR(120) NOT NULL,
@@ -54,6 +70,10 @@ CREATE TABLE IF NOT EXISTS patient_symptoms (
     CONSTRAINT fk_ps_symptom FOREIGN KEY (symptom_id) REFERENCES symptoms(id) ON DELETE RESTRICT,
     INDEX idx_ps_symptom (symptom_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Medicines (inventory) and visit dispensing
+-- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS medicines (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -96,8 +116,21 @@ CREATE TABLE IF NOT EXISTS visit_medicines (
     INDEX idx_vm_medicine (medicine_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Clinic settings (payment defaults, GST rates, visit charge default)
+-- ---------------------------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS clinic_settings (
     setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
     setting_value VARCHAR(255) NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO clinic_settings (setting_key, setting_value) VALUES
+    ('payment.default_amount', '0'),
+    ('payment.default_method', 'cash'),
+    ('payment.default_status', 'pending'),
+    ('gst.registration_percent', '5.00'),
+    ('gst.visit_charge_percent', '5.00'),
+    ('gst.medicine_percent', '5.00'),
+    ('visit.default_charge', '0.00');

@@ -62,7 +62,7 @@ return [
   'reception.dashboard.recent' => 'ਹਾਲ ਹੀ ਵਿੱਚ ਦਰਜ',
   'reception.dashboard.empty' => 'ਅਜੇ ਕੋਈ ਮਰੀਜ਼ ਦਰਜ ਨਹੀਂ ਹੈ।',
   'reception.sort.sort_by' => ':column ਦੇ ਅਨੁਸਾਰ ਕ੍ਰਮਬੱਧ ਕਰੋ',
-  'reception.error.database' => 'ਡਾਟਾਬੇਸ ਤਿਆਰ ਨਹੀਂ ਹੈ। ਪਹਿਲਾਂ sql/schema.sql ਚਲਾਓ।',
+  'reception.error.database' => 'ਡਾਟਾਬੇਸ ਤਿਆਰ ਨਹੀਂ ਹੈ। ਚਲਾਓ: php scripts/install_db.php',
 
   // Patient
   'patient.register.title' => 'ਮਰੀਜ਼ ਦਰਜ ਕਰੋ',

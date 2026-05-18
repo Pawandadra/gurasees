@@ -1,0 +1,26 @@
+# Deny access to sensitive paths if document root is misconfigured
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block direct access to hidden files
+    RewriteRule (^|/)\. - [F]
+
+    # Front controller: route non-file requests to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Block common sensitive extensions if uploaded by mistake
+<FilesMatch "\.(env|sql|log|ini|bak)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

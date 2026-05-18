@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+/** @var array<string, string> $errors */
+/** @var array<string, mixed> $old */
+/** @var string $code */
+/** @var string $sort */
+/** @var string $dir */
+
+$phoneIso = (string) ($old['phone_iso'] ?? 'IN');
+$phoneLocal = (string) ($old['phone_local'] ?? '');
+$backUrl = patient_dashboard_url($sort, $dir);
+$showPhonePlaceholder = false;
+
+ob_start();
+?>
+<div class="page-header-bar mb-4">
+    <?php $url = $backUrl; require BASE_PATH . '/views/partials/page_back.php'; ?>
+    <h1 class="reception-page-title mb-0"><?= e(__('patient.edit.title')) ?></h1>
+</div>
+
+<?php if (isset($errors['_form'])): ?>
+    <div class="alert alert-danger"><?= e($errors['_form']) ?></div>
+<?php endif; ?>
+
+<section class="reception-card reception-form">
+    <p class="text-muted small mb-3"><?= e(__('patient.field.id')) ?>: <span class="patient-code"><?= e($code) ?></span></p>
+
+    <form method="post" action="<?= e(base_url('/patient_edit.php')) ?>" novalidate>
+        <?= csrf_field() ?>
+        <input type="hidden" name="code" value="<?= e($code) ?>">
+        <input type="hidden" name="sort" value="<?= e($sort) ?>">
+        <input type="hidden" name="dir" value="<?= e($dir) ?>">
+
+        <?php require BASE_PATH . '/views/partials/patient_form_row1.php'; ?>
+        <?php require BASE_PATH . '/views/partials/patient_address_row.php'; ?>
+        <?php require BASE_PATH . '/views/partials/patient_symptoms_fields.php'; ?>
+
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-reception-primary"><?= e(__('action.save')) ?></button>
+            <a href="<?= e($backUrl) ?>" class="btn btn-outline-secondary"><?= e(__('action.cancel')) ?></a>
+        </div>
+    </form>
+</section>
+<?php
+$content = ob_get_clean();
+$pageScripts = ['assets/js/phone-country.js', 'assets/js/delivery-address.js'];
+require BASE_PATH . '/views/layouts/dashboard.php';

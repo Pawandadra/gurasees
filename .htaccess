@@ -1,0 +1,5 @@
+# Point Apache document root to /public when project root is the vhost root
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

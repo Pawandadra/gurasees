@@ -349,4 +349,18 @@ return [
   'users.field.new_password' => 'New password',
   'users.placeholder.optional' => 'Optional',
   'users.success.updated' => 'User updated successfully.',
+
+  'nav.profile' => 'Profile',
+
+  'profile.details.title' => 'Profile details',
+  'profile.details.hint' => 'Update your account information.',
+  'profile.password.title' => 'Change password',
+  'profile.password.hint' => 'Enter your old password before setting a new one.',
+  'profile.field.old_password' => 'Old password',
+  'profile.action.update_profile' => 'Update profile',
+  'profile.action.change_password' => 'Change password',
+  'profile.success.updated' => 'Profile updated successfully.',
+  'profile.success.password_changed' => 'Password changed successfully.',
+  'profile.error.old_password_required' => 'Please enter your old password.',
+  'profile.error.old_password_wrong' => 'Old password is incorrect.',
 ];

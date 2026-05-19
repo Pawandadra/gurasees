@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * @return list<array{id: string, url: string, label: string, icon: string}>
+ * @return list<array{id: string, url: string, label: string, icon: string, roles: list<string>}>
  */
 function nav_items(string $role): array
 {
@@ -64,6 +64,13 @@ function nav_items(string $role): array
             'icon' => 'users',
             'roles' => ['admin'],
         ],
+        [
+            'id' => 'profile',
+            'url' => '/profile.php',
+            'label' => __('nav.profile'),
+            'icon' => 'profile',
+            'roles' => ['receptionist', 'manager', 'admin'],
+        ],
     ];
 
     return array_values(array_filter(
@@ -84,6 +91,7 @@ function nav_active_id(): string
         'payment_settings' => 'payment_settings',
         'reports' => 'reports',
         'users' => 'users',
+        'profile' => 'profile',
         default => 'dashboard',
     };
 }

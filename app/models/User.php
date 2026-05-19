@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 final class User
-{
+{    
     private const ROLES = ['admin', 'manager', 'receptionist'];
 
     public static function findByUsername(string $username): ?array
@@ -327,5 +327,159 @@ final class User
         }
 
         return $errors;
+    }
+
+    
+
+
+
+
+    public static function findById(int $id, bool $withPassword = false): ?array
+    {
+    if ($id <= 0) {
+        return null;
+    }
+
+    $stmt = db()->prepare(
+        'SELECT id, username, password_hash, name, role, is_active, created_at
+         FROM users
+         WHERE id = :id
+         LIMIT 1'
+    );
+
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    $user = [
+        'id' => (int) $row['id'],
+        'username' => (string) $row['username'],
+        'name' => (string) $row['name'],
+        'role' => (string) $row['role'],
+        'is_active' => (int) $row['is_active'],
+        'created_at' => (string) $row['created_at'],
+    ];
+
+    if ($withPassword) {
+        $user['password_hash'] = (string) $row['password_hash'];
+    }
+
+    return $user;
+    }
+
+    public static function updateOwnProfile(int $id, array $data, bool $canChangeRole): array
+    {
+        $current = self::findById($id);
+
+        if ($current === null) {
+            return [
+                'ok' => false,
+                'errors' => [
+                'user' => __('users.error.user_not_found'),
+                ],
+            ];
+        }
+
+    // Username and role will NOT be changed from profile page.
+        $username = (string) $current['username'];
+        $role = (string) $current['role'];
+
+    // Only full name can be changed.
+        $name = input_string($data['name'] ?? '', 120);
+
+        $errors = [];
+
+        if (mb_strlen($name) < 2) {
+        $errors['name'] = __('users.error.name');
+        }
+
+        if ($errors !== []) {
+            return [
+                'ok' => false,
+                'errors' => $errors,
+            ];
+        }
+
+        $stmt = db()->prepare(
+            'UPDATE users
+             SET name = :name
+             WHERE id = :id
+             LIMIT 1'
+        );
+
+        $stmt->execute([
+            'name' => $name,
+            'id' => $id,
+        ]);
+
+        return [
+            'ok' => true,
+            'user' => [
+                'id' => $id,
+                'username' => $username,
+                'name' => $name,
+                'role' => $role,
+            ],
+        ];
+    }
+
+    public static function changeOwnPassword(    
+    int $id,
+    string $oldPassword,
+    string $newPassword,
+    string $confirmPassword
+    ): array {
+        $user = self::findById($id, true);
+
+        if ($user === null) {
+            return [
+                'ok' => false,
+                'errors' => [
+                    'user' => __('users.error.user_not_found'),
+                ],
+            ];
+        }
+
+        $errors = [];
+
+        if ($oldPassword === '') {
+            $errors['old_password'] = __('profile.error.old_password_required');
+        }
+
+        if (strlen($newPassword) < 8) {
+            $errors['new_password'] = __('users.error.password');
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            $errors['new_password_confirm'] = __('users.error.password_confirm');
+        }
+
+        if ($errors === [] && !password_verify($oldPassword, (string) $user['password_hash'])) {
+            $errors['old_password'] = __('profile.error.old_password_wrong');
+        }
+
+        if ($errors !== []) {
+            return [
+                'ok' => false,
+                'errors' => $errors,
+            ];
+        }
+
+        $stmt = db()->prepare(
+            'UPDATE users
+             SET password_hash = :password_hash
+             WHERE id = :id
+             LIMIT 1'
+        );
+
+        $stmt->execute([
+            'password_hash' => password_hash($newPassword, PASSWORD_DEFAULT),
+            'id' => $id,
+        ]);
+
+        return ['ok' => true];
     }
 }

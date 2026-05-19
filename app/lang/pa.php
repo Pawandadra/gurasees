@@ -349,4 +349,18 @@ return [
   'users.field.new_password' => 'ਨਵਾਂ ਪਾਸਵਰਡ',
   'users.placeholder.optional' => 'ਚੋਣਵਾਂ',
   'users.success.updated' => 'ਯੂਜ਼ਰ ਸਫਲਤਾਪੂਰਵਕ ਅਪਡੇਟ ਹੋ ਗਿਆ।',
+
+  'nav.profile' => 'ਪ੍ਰੋਫਾਈਲ',
+
+  'profile.details.title' => 'ਪ੍ਰੋਫਾਈਲ ਵੇਰਵੇ',
+  'profile.details.hint' => 'ਆਪਣੇ ਖਾਤੇ ਦੀ ਜਾਣਕਾਰੀ ਅਪਡੇਟ ਕਰੋ।',
+  'profile.password.title' => 'ਪਾਸਵਰਡ ਬਦਲੋ',
+  'profile.password.hint' => 'ਨਵਾਂ ਪਾਸਵਰਡ ਲਗਾਉਣ ਤੋਂ ਪਹਿਲਾਂ ਪੁਰਾਣਾ ਪਾਸਵਰਡ ਦਾਖਲ ਕਰੋ।',
+  'profile.field.old_password' => 'ਪੁਰਾਣਾ ਪਾਸਵਰਡ',
+  'profile.action.update_profile' => 'ਪ੍ਰੋਫਾਈਲ ਅਪਡੇਟ ਕਰੋ',
+  'profile.action.change_password' => 'ਪਾਸਵਰਡ ਬਦਲੋ',
+  'profile.success.updated' => 'ਪ੍ਰੋਫਾਈਲ ਸਫਲਤਾਪੂਰਵਕ ਅਪਡੇਟ ਹੋ ਗਈ।',
+  'profile.success.password_changed' => 'ਪਾਸਵਰਡ ਸਫਲਤਾਪੂਰਵਕ ਬਦਲ ਗਿਆ।',
+  'profile.error.old_password_required' => 'ਕਿਰਪਾ ਕਰਕੇ ਪੁਰਾਣਾ ਪਾਸਵਰਡ ਦਾਖਲ ਕਰੋ।',
+  'profile.error.old_password_wrong' => 'ਪੁਰਾਣਾ ਪਾਸਵਰਡ ਗਲਤ ਹੈ।',
 ];

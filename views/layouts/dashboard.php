@@ -41,7 +41,23 @@ $activeNav = $activeNav ?? nav_active_id();
             </div>
             <?php require BASE_PATH . '/views/partials/header_patient_search.php'; ?>
             <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
-                <span class="text-white-50 small d-none d-md-inline"><?= e($user['name'] ?? '') ?></span>
+                <?php
+                $displayUserName = (string) ($user['name'] ?? '');
+                $displayUserNameLower = strtolower(trim($displayUserName));
+
+                if ($displayUserNameLower === 'administrator') {
+                    $displayUserName = __('users.seed.admin_name');
+                } elseif ($displayUserNameLower === 'clinic manager') {
+                    $displayUserName = __('users.seed.manager_name');
+                } elseif ($displayUserNameLower === 'reception desk') {
+                    $displayUserName = __('users.seed.reception_name');
+                }
+                ?>
+
+                <span class="text-white-50 small d-none d-md-inline"><?= e($displayUserName) ?></span>
+
+
+
                 <div class="btn-group btn-group-sm reception-lang" role="group" aria-label="<?= e(__('lang.label')) ?>">
                     <a href="<?= e(lang_url('en')) ?>"
                        class="btn btn-sm<?= $locale === 'en' ? ' btn-light' : ' btn-outline-light' ?>"><?= e(__('lang.english')) ?></a>

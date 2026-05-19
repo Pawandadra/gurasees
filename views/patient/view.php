@@ -11,9 +11,20 @@ declare(strict_types=1);
 /** @var string $code */
 /** @var string $sort */
 /** @var string $dir */
+/** @var string $return */
+/** @var array{q: string, gender: string, page: int} $listFilters */
 
-$backUrl = patient_dashboard_url($sort, $dir);
-$editUrl = base_url('/patient_edit.php?' . http_build_query(['code' => $code]) . '&' . patient_action_query($sort, $dir));
+$return = $return ?? 'dashboard';
+$listFilters = $return === 'visits'
+    ? ($listFilters ?? visit_list_filters_from_request())
+    : ($listFilters ?? patient_list_filters_from_request());
+$backUrl = patient_return_url($return, $sort, $dir, $listFilters);
+$actionExtra = match ($return) {
+    'patients' => patient_build_list_query($sort, $dir, patient_list_query_filters($listFilters)),
+    'visits' => patient_build_list_query($sort, $dir, visit_list_query_filters($listFilters)),
+    default => [],
+};
+$editUrl = base_url('/patient_edit.php?' . http_build_query(['code' => $code]) . '&' . patient_action_query($sort, $dir, $actionExtra));
 $visitErrors = $visitErrors ?? [];
 $visitOld = $visitOld ?? ['visited_at' => '', 'notes' => ''];
 $visits = $visits ?? [];

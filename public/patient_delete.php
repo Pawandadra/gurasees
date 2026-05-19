@@ -16,8 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 csrf_require();
 
 $code = strtoupper(input_string($_POST['code'] ?? '', 12));
-$sort = (string) ($_POST['sort'] ?? 'date');
-$dir = (string) ($_POST['dir'] ?? 'desc');
+$sortParams = Patient::normalizeSort(
+    (string) ($_POST['sort'] ?? 'date'),
+    (string) ($_POST['dir'] ?? 'desc')
+);
+$return = patient_return_from_request();
+$listFilters = patient_list_filters_from_request();
 
 if (Patient::delete($code)) {
     flash_set('success', __('patient.delete.success', ['code' => $code]));
@@ -25,4 +29,4 @@ if (Patient::delete($code)) {
     flash_set('error', __('patient.error.not_found'));
 }
 
-redirect(patient_dashboard_url($sort, $dir));
+redirect(patient_return_url($return, $sortParams['sort'], $sortParams['dir'], $listFilters));

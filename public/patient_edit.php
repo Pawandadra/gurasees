@@ -19,6 +19,8 @@ $sortParams = Patient::normalizeSort(
     (string) ($_GET['sort'] ?? $_POST['sort'] ?? 'date'),
     (string) ($_GET['dir'] ?? $_POST['dir'] ?? 'desc')
 );
+$return = patient_return_from_request();
+$listFilters = patient_list_filters_from_request();
 
 $errors = [];
 $old = Patient::recordToForm($patient);
@@ -29,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($result['ok']) {
         flash_set('success', __('patient.update.success', ['code' => $code]));
-        redirect(patient_dashboard_url($sortParams['sort'], $sortParams['dir']));
+        redirect(patient_return_url($return, $sortParams['sort'], $sortParams['dir'], $listFilters));
     }
 
     $errors = $result['errors'];
@@ -37,6 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = __('patient.edit.title');
-$activeNav = 'dashboard';
+$activeNav = $return === 'patients' ? 'patients' : 'dashboard';
 
-view('patient/edit', array_merge(compact('errors', 'old', 'code'), $sortParams));
+view('patient/edit', array_merge(compact('errors', 'old', 'code', 'return', 'listFilters'), $sortParams));

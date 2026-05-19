@@ -8,6 +8,140 @@ require_once APP_PATH . '/models/VisitSettings.php';
 
 final class Visit
 {
+    /** @var array<string, string> */
+    private const SORT_COLUMNS = [
+        'date' => 'v.visited_at',
+        'patient_id' => 'p.patient_code',
+        'patient' => 'p.name',
+        'visit_charge' => 'v.visit_charge',
+        'medicine_total' => 'v.medicine_total',
+        'total' => 'v.grand_total',
+        'recorded_by' => 'u.name',
+    ];
+
+    /**
+     * @return array{sort: string, dir: string}
+     */
+    public static function normalizeSort(string $sort, string $dir): array
+    {
+        $sort = strtolower($sort);
+        if (!isset(self::SORT_COLUMNS[$sort])) {
+            $sort = 'date';
+        }
+
+        $dir = strtolower($dir) === 'asc' ? 'asc' : 'desc';
+
+        return ['sort' => $sort, 'dir' => $dir];
+    }
+
+    /**
+     * @param array{q?: string, visit_date?: string, medicine_id?: string} $filters
+     * @return array{rows: list<array<string, mixed>>, total: int}
+     */
+    public static function listFiltered(
+        array $filters,
+        string $sort = 'date',
+        string $dir = 'desc',
+        int $page = 1,
+        int $perPage = 50
+    ): array {
+        $perPage = max(1, min($perPage, 100));
+        $page = max(1, $page);
+        $sortParams = self::normalizeSort($sort, $dir);
+        $column = self::SORT_COLUMNS[$sortParams['sort']];
+        $direction = $sortParams['dir'] === 'asc' ? 'ASC' : 'DESC';
+        $offset = ($page - 1) * $perPage;
+
+        $where = self::buildListWhere($filters);
+        $fromSql = '
+            FROM visits v
+            INNER JOIN patients p ON p.id = v.patient_id
+            LEFT JOIN users u ON u.id = v.recorded_by';
+
+        $pdo = db();
+        $countStmt = $pdo->prepare('SELECT COUNT(*) ' . $fromSql . ' WHERE ' . $where['sql']);
+        $countStmt->execute($where['bind']);
+        $total = (int) $countStmt->fetchColumn();
+
+        $stmt = $pdo->prepare(
+            'SELECT v.id, v.visited_at, v.notes, v.visit_charge, v.visit_gst,
+                    v.medicine_total, v.medicine_gst, v.grand_total,
+                    p.patient_code, p.name AS patient_name,
+                    u.name AS recorded_by_name '
+            . $fromSql
+            . " WHERE {$where['sql']}
+             ORDER BY {$column} {$direction}, v.id DESC
+             LIMIT :lim OFFSET :off"
+        );
+        foreach ($where['bind'] as $key => $value) {
+            $type = in_array($key, ['has_phone_digits', 'medicine_id'], true) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue(':' . $key, $value, $type);
+        }
+        $stmt->bindValue(':lim', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll();
+        if ($rows === []) {
+            return ['rows' => [], 'total' => $total];
+        }
+
+        $visitIds = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+        $linesByVisit = self::medicineLinesForVisits($visitIds);
+
+        foreach ($rows as &$row) {
+            $id = (int) $row['id'];
+            $row['medicine_lines'] = $linesByVisit[$id] ?? [];
+        }
+        unset($row);
+
+        return ['rows' => $rows, 'total' => $total];
+    }
+
+    /**
+     * @param array{q?: string, visit_date?: string, medicine_id?: string} $filters
+     * @return array{sql: string, bind: array<string, mixed>}
+     */
+    private static function buildListWhere(array $filters): array
+    {
+        $parts = ['p.patient_code IS NOT NULL'];
+        $bind = [];
+
+        $q = trim((string) ($filters['q'] ?? ''));
+        if ($q !== '') {
+            $phoneDigits = preg_replace('/\D+/', '', $q) ?? '';
+            $parts[] = '(
+                p.patient_code LIKE :code
+                OR p.name LIKE :name
+                OR p.phone LIKE :phone
+                OR (:has_phone_digits = 1 AND REPLACE(REPLACE(REPLACE(p.phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits)
+            )';
+            $bind['code'] = '%' . strtoupper(str_replace(' ', '', $q)) . '%';
+            $bind['name'] = '%' . $q . '%';
+            $bind['phone'] = '%' . $q . '%';
+            $bind['has_phone_digits'] = $phoneDigits !== '' ? 1 : 0;
+            $bind['phone_digits'] = $phoneDigits !== '' ? '%' . $phoneDigits . '%' : '0';
+        }
+
+        $visitDate = (string) ($filters['visit_date'] ?? '');
+        if ($visitDate !== '') {
+            $parts[] = 'v.visited_at >= :visit_date_start AND v.visited_at <= :visit_date_end';
+            $bind['visit_date_start'] = $visitDate . ' 00:00:00';
+            $bind['visit_date_end'] = $visitDate . ' 23:59:59';
+        }
+
+        $medicineId = filter_var($filters['medicine_id'] ?? '', FILTER_VALIDATE_INT);
+        if ($medicineId !== false && $medicineId > 0) {
+            $parts[] = 'EXISTS (
+                SELECT 1 FROM visit_medicines vm_filter
+                WHERE vm_filter.visit_id = v.id AND vm_filter.medicine_id = :medicine_id
+            )';
+            $bind['medicine_id'] = (int) $medicineId;
+        }
+
+        return ['sql' => implode(' AND ', $parts), 'bind' => $bind];
+    }
+
     /**
      * @return list<array<string, mixed>>
      */

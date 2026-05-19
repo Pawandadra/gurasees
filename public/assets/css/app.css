@@ -172,6 +172,15 @@ html[lang="pa"] body {
   vertical-align: bottom;
 }
 
+.reception-table-sortable thead th {
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.reception-table-sortable thead th.col-actions {
+  cursor: default;
+}
+
 .reception-sort-link {
   display: inline-flex;
   align-items: center;
@@ -179,10 +188,20 @@ html[lang="pa"] body {
   color: inherit;
   text-decoration: none;
   font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.reception-table-sortable th.text-end .reception-sort-link {
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .reception-sort-link:hover {
   color: var(--gaa-teal);
+  text-decoration: none;
 }
 
 .reception-sort-link.active {
@@ -193,6 +212,7 @@ html[lang="pa"] body {
   font-size: 0.65rem;
   line-height: 1;
   opacity: 0.85;
+  flex-shrink: 0;
 }
 
 .reception-table .col-address {
@@ -459,6 +479,98 @@ html[lang="pa"] body {
 @media (max-width: 767.98px) {
   .patient-payment-row {
     grid-template-columns: 1fr;
+  }
+}
+
+.patient-list-filters-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 0.2fr)
+    minmax(0, 0.25fr)
+    minmax(0, 0.4fr)
+    auto;
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+.patient-list-filters .form-label {
+  white-space: nowrap;
+}
+
+.patient-list-filter-search,
+.patient-list-filter-gender,
+.patient-list-filter-age,
+.patient-list-filter-date {
+  min-width: 0;
+}
+
+.patient-list-filter-search {
+  max-width: 100%;
+}
+
+.patient-list-filter-gender .form-select {
+  width: 100%;
+}
+
+.patient-list-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.patient-list-range-inputs .form-control {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.patient-list-range-sep {
+  color: var(--gaa-muted);
+  flex-shrink: 0;
+}
+
+.patient-list-filter-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  align-items: center;
+  align-self: end;
+}
+
+.patient-list-filter-actions .btn {
+  white-space: nowrap;
+}
+
+.patient-list-pagination .page-link {
+  color: var(--gaa-teal-dark);
+}
+
+.patient-list-pagination .page-item.active .page-link {
+  background-color: var(--gaa-teal);
+  border-color: var(--gaa-teal);
+}
+
+.visit-list-filters-row {
+  grid-template-columns:
+    minmax(0, 2fr)
+    minmax(0, 1fr)
+    minmax(0, 0.75fr)
+    auto;
+}
+
+.patient-list-filter-medicine .form-select {
+  width: 100%;
+}
+
+@media (max-width: 767.98px) {
+  .patient-list-filters-row,
+  .visit-list-filters-row {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-list-filter-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -1023,10 +1135,7 @@ body.sidebar-open {
 }
 
 .visit-medicine-search-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
+  display: block;
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: none;

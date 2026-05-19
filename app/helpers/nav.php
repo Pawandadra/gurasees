@@ -23,6 +23,13 @@ function nav_items(string $role): array
             'roles' => ['receptionist', 'manager', 'admin'],
         ],
         [
+            'id' => 'visits',
+            'url' => '/visits.php',
+            'label' => __('nav.visits'),
+            'icon' => 'visits',
+            'roles' => ['receptionist', 'manager', 'admin'],
+        ],
+        [
             'id' => 'symptoms',
             'url' => '/symptoms.php',
             'label' => __('nav.symptoms'),
@@ -71,6 +78,7 @@ function nav_active_id(): string
 
     return match ($script) {
         'patients' => 'patients',
+        'visits' => 'visits',
         'symptoms' => 'symptoms',
         'medicines' => 'medicines',
         'payment_settings' => 'payment_settings',

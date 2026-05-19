@@ -7,10 +7,14 @@ declare(strict_types=1);
 /** @var string $code */
 /** @var string $sort */
 /** @var string $dir */
+/** @var string $return */
+/** @var array{q: string, gender: string, page: int} $listFilters */
 
+$return = $return ?? 'dashboard';
+$listFilters = $listFilters ?? patient_list_filters_from_request();
 $phoneIso = (string) ($old['phone_iso'] ?? 'IN');
 $phoneLocal = (string) ($old['phone_local'] ?? '');
-$backUrl = patient_dashboard_url($sort, $dir);
+$backUrl = patient_return_url($return, $sort, $dir, $listFilters);
 $showPhonePlaceholder = false;
 
 ob_start();
@@ -32,6 +36,15 @@ ob_start();
         <input type="hidden" name="code" value="<?= e($code) ?>">
         <input type="hidden" name="sort" value="<?= e($sort) ?>">
         <input type="hidden" name="dir" value="<?= e($dir) ?>">
+        <?php if ($return === 'patients'): ?>
+            <input type="hidden" name="return" value="patients">
+            <?php foreach (patient_list_query_filters($listFilters) as $filterKey => $filterValue): ?>
+                <?php if ($filterKey === 'return' || $filterValue === null || $filterValue === '') {
+                    continue;
+                } ?>
+                <input type="hidden" name="<?= e((string) $filterKey) ?>" value="<?= e((string) $filterValue) ?>">
+            <?php endforeach; ?>
+        <?php endif; ?>
 
         <?php require BASE_PATH . '/views/partials/patient_form_row1.php'; ?>
         <?php require BASE_PATH . '/views/partials/patient_address_row.php'; ?>

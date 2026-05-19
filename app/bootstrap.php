@@ -47,6 +47,7 @@ if (!$appConfig['debug']) {
 
 require APP_PATH . '/helpers/functions.php';
 require APP_PATH . '/helpers/form.php';
+require APP_PATH . '/helpers/visits_list.php';
 require APP_PATH . '/helpers/phone.php';
 require APP_PATH . '/helpers/security.php';
 require APP_PATH . '/helpers/lang.php';

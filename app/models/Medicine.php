@@ -5,6 +5,29 @@ declare(strict_types=1);
 final class Medicine
 {
     /**
+     * @return list<array{id: int, name: string}>
+     */
+    public static function listForFilter(): array
+    {
+        $stmt = db()->query(
+            'SELECT id, name
+             FROM medicines
+             WHERE is_active = 1
+             ORDER BY sort_order ASC, name ASC'
+        );
+
+        $rows = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $rows[] = [
+                'id' => (int) $row['id'],
+                'name' => (string) $row['name'],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * For reception — no stock quantity exposed.
      *
      * @return list<array{id: int, name: string, unit_price: string}>

@@ -69,16 +69,28 @@ final class Patient
         }
     }
 
-    /** @var array<string, string> sort key => SQL column */
+    /** @var array<string, string> sort key => SQL order expression */
     private const SORT_COLUMNS = [
-        'id' => 'id',
-        'name' => 'name',
-        'age' => 'age',
-        'gender' => 'gender',
-        'phone' => 'phone',
-        'address' => 'address',
-        'date' => 'created_at',
+        'id' => 'p.id',
+        'name' => 'p.name',
+        'age' => 'p.age',
+        'gender' => 'p.gender',
+        'phone' => 'p.phone',
+        'address' => 'p.address',
+        'date' => 'COALESCE(lv.last_visited_at, p.created_at)',
     ];
+
+    private const LIST_FROM_SQL = '
+        FROM patients p
+        LEFT JOIN (
+            SELECT patient_id, MAX(visited_at) AS last_visited_at
+            FROM visits
+            GROUP BY patient_id
+        ) lv ON lv.patient_id = p.id';
+
+    private const LIST_SELECT_SQL = '
+        p.patient_code, p.name, p.age, p.gender, p.phone, p.address, p.created_at,
+        lv.last_visited_at';
 
     /**
      * @return array{sort: string, dir: string}
@@ -106,8 +118,8 @@ final class Patient
         $direction = $sortParams['dir'] === 'asc' ? 'ASC' : 'DESC';
 
         $stmt = db()->prepare(
-            "SELECT patient_code, name, age, gender, phone, address, created_at
-             FROM patients
+            'SELECT ' . self::LIST_SELECT_SQL . self::LIST_FROM_SQL . "
+             WHERE p.patient_code IS NOT NULL
              ORDER BY {$column} {$direction}
              LIMIT :lim"
         );
@@ -115,6 +127,109 @@ final class Patient
         $stmt->execute();
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * @param array{q?: string, gender?: string, age_min?: string, age_max?: string, date_from?: string, date_to?: string} $filters
+     * @return array{rows: list<array<string, mixed>>, total: int}
+     */
+    public static function listFiltered(
+        array $filters,
+        string $sort = 'date',
+        string $dir = 'desc',
+        int $page = 1,
+        int $perPage = 25
+    ): array {
+        $perPage = max(1, min($perPage, 100));
+        $page = max(1, $page);
+        $sortParams = self::normalizeSort($sort, $dir);
+        $column = self::SORT_COLUMNS[$sortParams['sort']];
+        $direction = $sortParams['dir'] === 'asc' ? 'ASC' : 'DESC';
+        $offset = ($page - 1) * $perPage;
+
+        $where = self::buildListWhere($filters);
+        $pdo = db();
+
+        $countStmt = $pdo->prepare('SELECT COUNT(*) ' . self::LIST_FROM_SQL . ' WHERE ' . $where['sql']);
+        $countStmt->execute($where['bind']);
+        $total = (int) $countStmt->fetchColumn();
+
+        $stmt = $pdo->prepare(
+            'SELECT ' . self::LIST_SELECT_SQL . self::LIST_FROM_SQL . "
+             WHERE {$where['sql']}
+             ORDER BY {$column} {$direction}
+             LIMIT :lim OFFSET :off"
+        );
+        foreach ($where['bind'] as $key => $value) {
+            $type = in_array($key, ['has_phone_digits', 'age_min', 'age_max'], true)
+                ? PDO::PARAM_INT
+                : PDO::PARAM_STR;
+            $stmt->bindValue(':' . $key, $value, $type);
+        }
+        $stmt->bindValue(':lim', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return ['rows' => $stmt->fetchAll(), 'total' => $total];
+    }
+
+    /**
+     * @param array{q?: string, gender?: string, age_min?: string, age_max?: string, date_from?: string, date_to?: string} $filters
+     * @return array{sql: string, bind: array<string, mixed>}
+     */
+    private static function buildListWhere(array $filters): array
+    {
+        $parts = ['p.patient_code IS NOT NULL'];
+        $bind = [];
+
+        $q = trim((string) ($filters['q'] ?? ''));
+        if ($q !== '') {
+            $phoneDigits = preg_replace('/\D+/', '', $q) ?? '';
+            $parts[] = '(
+                p.patient_code LIKE :code
+                OR p.name LIKE :name
+                OR p.phone LIKE :phone
+                OR (:has_phone_digits = 1 AND REPLACE(REPLACE(REPLACE(p.phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits)
+            )';
+            $bind['code'] = '%' . strtoupper(str_replace(' ', '', $q)) . '%';
+            $bind['name'] = '%' . $q . '%';
+            $bind['phone'] = '%' . $q . '%';
+            $bind['has_phone_digits'] = $phoneDigits !== '' ? 1 : 0;
+            $bind['phone_digits'] = $phoneDigits !== '' ? '%' . $phoneDigits . '%' : '0';
+        }
+
+        $gender = (string) ($filters['gender'] ?? '');
+        if (in_array($gender, ['male', 'female', 'other'], true)) {
+            $parts[] = 'p.gender = :gender';
+            $bind['gender'] = $gender;
+        }
+
+        $ageMin = (string) ($filters['age_min'] ?? '');
+        if ($ageMin !== '') {
+            $parts[] = 'p.age >= :age_min';
+            $bind['age_min'] = (int) $ageMin;
+        }
+
+        $ageMax = (string) ($filters['age_max'] ?? '');
+        if ($ageMax !== '') {
+            $parts[] = 'p.age <= :age_max';
+            $bind['age_max'] = (int) $ageMax;
+        }
+
+        $activityAt = 'COALESCE(lv.last_visited_at, p.created_at)';
+        $dateFrom = (string) ($filters['date_from'] ?? '');
+        if ($dateFrom !== '') {
+            $parts[] = "{$activityAt} >= :date_from";
+            $bind['date_from'] = $dateFrom . ' 00:00:00';
+        }
+
+        $dateTo = (string) ($filters['date_to'] ?? '');
+        if ($dateTo !== '') {
+            $parts[] = "{$activityAt} <= :date_to";
+            $bind['date_to'] = $dateTo . ' 23:59:59';
+        }
+
+        return ['sql' => implode(' AND ', $parts), 'bind' => $bind];
     }
 
     public static function genderLabel(string $gender): string
@@ -133,6 +248,19 @@ final class Patient
         }
 
         return $dt->format('d M Y');
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    public static function formatListLastVisited(array $row): string
+    {
+        $lastVisited = $row['last_visited_at'] ?? null;
+        if ($lastVisited !== null && $lastVisited !== '') {
+            return self::formatRegisteredAt((string) $lastVisited);
+        }
+
+        return self::formatRegisteredAt((string) $row['created_at']);
     }
 
     public static function isValidCode(string $code): bool

@@ -156,11 +156,9 @@
             var row = document.createElement('tr');
             row.className = 'visit-medicine-cart-row';
             row.innerHTML =
-                '<td><span class="fw-medium">' + escapeHtml(med.name) + '</span>' +
-                '<br><span class="text-muted small">' + formatMoney(parseFloat(med.unit_price)) + ' each</span></td>' +
+                '<td><span class="fw-medium">' + escapeHtml(med.name) + '</span></td>' +
                 '<td class="text-center"><label class="visually-hidden">' + escapeHtml(root.getAttribute('data-label-qty') || 'Qty') + '</label>' +
                 '<input type="number" class="form-control form-control-sm visit-cart-qty mx-auto" min="1" step="1" value="' + qty + '" data-id="' + id + '"></td>' +
-                '<td class="text-end fw-semibold visit-cart-line-total">' + formatMoney(parseFloat(med.unit_price) * qty) + '</td>' +
                 '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger visit-cart-remove px-2" data-id="' + id + '" title="' +
                 escapeHtml(root.getAttribute('data-label-remove') || 'Remove') + '">×</button></td>';
 
@@ -267,9 +265,7 @@
             btn.className = 'visit-medicine-search-item';
             btn.setAttribute('role', 'option');
             btn.setAttribute('data-id', String(item.id));
-            btn.innerHTML =
-                '<span class="visit-medicine-search-name">' + escapeHtml(item.name) + '</span>' +
-                '<span class="visit-medicine-search-price">' + formatMoney(parseFloat(item.unit_price)) + '</span>';
+            btn.innerHTML = '<span class="visit-medicine-search-name">' + escapeHtml(item.name) + '</span>';
             btn.addEventListener('mousedown', function (event) {
                 event.preventDefault();
             });

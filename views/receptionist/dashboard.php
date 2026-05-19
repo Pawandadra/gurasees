@@ -27,7 +27,7 @@ $recentColumns = [
     'gender' => __('patient.field.gender'),
     'phone' => __('patient.field.phone'),
     'address' => __('patient.field.address'),
-    'date' => __('patient.field.date'),
+    'date' => __('patient.field.last_visited'),
 ];
 
 try {
@@ -87,46 +87,16 @@ ob_start();
         <?php if ($recentPatients === []): ?>
             <p class="text-muted mb-0"><?= e(__('reception.dashboard.empty')) ?></p>
         <?php else: ?>
-            <div class="table-responsive">
-                <table class="table table-hover reception-table reception-table-sortable mb-0">
-                    <thead>
-                    <tr>
-                        <?php foreach ($recentColumns as $colKey => $colLabel): ?>
-                            <th scope="col"<?= patient_sort_th_attr($colKey, $sort, $dir) ?><?= $colKey === 'address' ? ' class="col-address"' : '' ?>>
-                                <a href="<?= e(patient_sort_url($colKey, $sort, $dir)) ?>"
-                                   class="reception-sort-link<?= $sort === $colKey ? ' active' : '' ?>"
-                                   title="<?= e(__('reception.sort.sort_by', ['column' => $colLabel])) ?>">
-                                    <?= e($colLabel) ?>
-                                    <?php if ($sort === $colKey): ?>
-                                        <span class="reception-sort-icon" aria-hidden="true"><?= $dir === 'asc' ? '▲' : '▼' ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </th>
-                        <?php endforeach; ?>
-                        <th scope="col" class="col-actions"><?= e(__('patient.field.actions')) ?></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($recentPatients as $row): ?>
-                        <tr>
-                            <td><span class="patient-code"><?= e($row['patient_code']) ?></span></td>
-                            <td><?= e($row['name']) ?></td>
-                            <td><?= e((string) $row['age']) ?></td>
-                            <td><?= e(Patient::genderLabel((string) $row['gender'])) ?></td>
-                            <td><?= e(phone_format_display((string) $row['phone'])) ?></td>
-                            <td class="col-address" title="<?= e((string) $row['address']) ?>"><?= e((string) $row['address']) ?></td>
-                            <td><?= e(Patient::formatRegisteredAt((string) $row['created_at'])) ?></td>
-                            <td class="col-actions">
-                                <?php
-                                $patientCode = (string) $row['patient_code'];
-                                require BASE_PATH . '/views/partials/patient_actions.php';
-                                ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+            <?php
+            $patientRows = $recentPatients;
+            $patientColumns = $recentColumns;
+            $listPath = '/dashboard.php';
+            $listFilters = [];
+            $return = 'dashboard';
+            $actionExtra = [];
+            $emptyMessage = '';
+            require BASE_PATH . '/views/partials/patient_list_table.php';
+            ?>
         <?php endif; ?>
     </section>
 

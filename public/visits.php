@@ -3,47 +3,54 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/app/bootstrap.php';
-load_model('Patient');
+load_model('Visit');
+load_model('Medicine');
 
 auth_require();
 auth_require_role(['receptionist', 'manager', 'admin']);
 
-$pageTitle = __('patients.list.title');
+$pageTitle = __('visits.list.title');
 $successMessage = flash_get('success');
 $errorMessage = flash_get('error');
 
-$sortParams = Patient::normalizeSort(
+$sortParams = Visit::normalizeSort(
     (string) ($_GET['sort'] ?? 'date'),
     (string) ($_GET['dir'] ?? 'desc')
 );
-$listFilters = patient_list_filters_from_request();
-$perPage = 25;
+$listFilters = visit_list_filters_from_request();
+$perPage = 50;
 
 try {
-    $listResult = Patient::listFiltered(
+    $filterMedicines = Medicine::listForFilter();
+} catch (Throwable) {
+    $filterMedicines = [];
+}
+
+try {
+    $listResult = Visit::listFiltered(
         $listFilters,
         $sortParams['sort'],
         $sortParams['dir'],
         $listFilters['page'],
         $perPage
     );
-    $patientRows = $listResult['rows'];
-    $totalPatients = $listResult['total'];
+    $visitRows = $listResult['rows'];
+    $totalVisits = $listResult['total'];
     $dbError = false;
 } catch (Throwable) {
-    $patientRows = [];
-    $totalPatients = 0;
+    $visitRows = [];
+    $totalVisits = 0;
     $dbError = true;
 }
 
-$totalPages = max(1, (int) ceil($totalPatients / $perPage));
+$totalPages = max(1, (int) ceil($totalVisits / $perPage));
 $page = min($listFilters['page'], $totalPages);
 $listFilters['page'] = $page;
 
-view('patients/index', array_merge(
+view('visits/index', array_merge(
     compact(
-        'patientRows',
-        'totalPatients',
+        'visitRows',
+        'totalVisits',
         'totalPages',
         'page',
         'perPage',
@@ -51,7 +58,8 @@ view('patients/index', array_merge(
         'dbError',
         'successMessage',
         'errorMessage',
-        'pageTitle'
+        'pageTitle',
+        'filterMedicines'
     ),
     $sortParams
 ));

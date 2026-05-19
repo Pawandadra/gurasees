@@ -59,7 +59,6 @@ $visitBilling = $visitBilling ?? Visit::billingDefaults();
                             <tr>
                                 <th scope="col"><?= e(__('visit.medicine.table.name')) ?></th>
                                 <th scope="col" class="text-center visit-medicine-th-qty"><?= e(__('visit.medicine.field.quantity')) ?></th>
-                                <th scope="col" class="text-end"><?= e(__('visit.medicine.table.amount')) ?></th>
                                 <th scope="col" class="visit-medicine-th-action"><span class="visually-hidden"><?= e(__('visit.medicine.table.action')) ?></span></th>
                             </tr>
                             </thead>

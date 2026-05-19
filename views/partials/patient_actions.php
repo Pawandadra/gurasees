@@ -5,8 +5,10 @@ declare(strict_types=1);
 /** @var string $patientCode */
 /** @var string $sort */
 /** @var string $dir */
+/** @var array<string, scalar|null> $actionExtra */
 
-$query = patient_action_query($sort, $dir);
+$actionExtra = $actionExtra ?? [];
+$query = patient_action_query($sort, $dir, $actionExtra);
 $viewUrl = base_url('/patient_view.php?' . http_build_query(['code' => $patientCode]) . '&' . $query);
 $editUrl = base_url('/patient_edit.php?' . http_build_query(['code' => $patientCode]) . '&' . $query);
 ?>
@@ -24,6 +26,9 @@ $editUrl = base_url('/patient_edit.php?' . http_build_query(['code' => $patientC
         <input type="hidden" name="code" value="<?= e($patientCode) ?>">
         <input type="hidden" name="sort" value="<?= e($sort) ?>">
         <input type="hidden" name="dir" value="<?= e($dir) ?>">
+        <?php foreach ($actionExtra as $key => $value): ?>
+            <input type="hidden" name="<?= e((string) $key) ?>" value="<?= e((string) $value) ?>">
+        <?php endforeach; ?>
         <button type="button" class="patient-action-btn patient-action-delete patient-delete-trigger"
                 data-confirm="<?= e(__('patient.delete.confirm', ['code' => $patientCode])) ?>"
                 title="<?= e(__('patient.action.delete')) ?>" aria-label="<?= e(__('patient.action.delete')) ?>">

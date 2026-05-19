@@ -22,6 +22,10 @@ $sortParams = Patient::normalizeSort(
     (string) ($_GET['sort'] ?? $_POST['sort'] ?? 'date'),
     (string) ($_GET['dir'] ?? $_POST['dir'] ?? 'desc')
 );
+$return = patient_return_from_request();
+$listFilters = $return === 'visits'
+    ? visit_list_filters_from_request()
+    : patient_list_filters_from_request();
 
 $visitErrors = [];
 $visitBilling = Visit::billingDefaults();
@@ -63,12 +67,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_v
 }
 
 $pageTitle = __('patient.view.title');
-$activeNav = 'dashboard';
+$activeNav = match ($return) {
+    'patients' => 'patients',
+    'visits' => 'visits',
+    default => 'dashboard',
+};
 $symptomLabels = Patient::symptomLabelsForCode($code);
 $successMessage = flash_get('success');
 $visits = Visit::listForPatient($patientId);
 
 view('patient/view', array_merge(
-    compact('patient', 'code', 'symptomLabels', 'visits', 'visitErrors', 'visitOld', 'visitBilling', 'successMessage', 'catalogMedicines'),
+    compact('patient', 'code', 'symptomLabels', 'visits', 'visitErrors', 'visitOld', 'visitBilling', 'successMessage', 'catalogMedicines', 'return', 'listFilters'),
     $sortParams
 ));

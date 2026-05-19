@@ -114,13 +114,12 @@ final class Patient
     {
         $limit = max(1, min($limit, 20));
         $sortParams = self::normalizeSort($sort, $dir);
-        $column = self::SORT_COLUMNS[$sortParams['sort']];
-        $direction = $sortParams['dir'] === 'asc' ? 'ASC' : 'DESC';
+        $orderSql = db_order_sql(self::SORT_COLUMNS, $sortParams['sort'], $sortParams['dir'], 'date');
 
         $stmt = db()->prepare(
             'SELECT ' . self::LIST_SELECT_SQL . self::LIST_FROM_SQL . "
              WHERE p.patient_code IS NOT NULL
-             ORDER BY {$column} {$direction}
+             ORDER BY {$orderSql}, p.id DESC
              LIMIT :lim"
         );
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
@@ -143,34 +142,24 @@ final class Patient
         $perPage = max(1, min($perPage, 100));
         $page = max(1, $page);
         $sortParams = self::normalizeSort($sort, $dir);
-        $column = self::SORT_COLUMNS[$sortParams['sort']];
-        $direction = $sortParams['dir'] === 'asc' ? 'ASC' : 'DESC';
+        $orderSql = db_order_sql(self::SORT_COLUMNS, $sortParams['sort'], $sortParams['dir'], 'date');
         $offset = ($page - 1) * $perPage;
 
         $where = self::buildListWhere($filters);
         $pdo = db();
 
-        $countStmt = $pdo->prepare('SELECT COUNT(*) ' . self::LIST_FROM_SQL . ' WHERE ' . $where['sql']);
-        $countStmt->execute($where['bind']);
-        $total = (int) $countStmt->fetchColumn();
-
         $stmt = $pdo->prepare(
-            'SELECT ' . self::LIST_SELECT_SQL . self::LIST_FROM_SQL . "
+            'SELECT ' . self::LIST_SELECT_SQL . ', COUNT(*) OVER() AS _list_total ' . self::LIST_FROM_SQL . "
              WHERE {$where['sql']}
-             ORDER BY {$column} {$direction}
+             ORDER BY {$orderSql}, p.id DESC
              LIMIT :lim OFFSET :off"
         );
-        foreach ($where['bind'] as $key => $value) {
-            $type = in_array($key, ['has_phone_digits', 'age_min', 'age_max'], true)
-                ? PDO::PARAM_INT
-                : PDO::PARAM_STR;
-            $stmt->bindValue(':' . $key, $value, $type);
-        }
+        db_bind_named($stmt, $where['bind'], ['has_phone_digits', 'age_min', 'age_max']);
         $stmt->bindValue(':lim', $perPage, PDO::PARAM_INT);
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return ['rows' => $stmt->fetchAll(), 'total' => $total];
+        return db_strip_list_total($stmt->fetchAll());
     }
 
     /**
@@ -184,18 +173,9 @@ final class Patient
 
         $q = trim((string) ($filters['q'] ?? ''));
         if ($q !== '') {
-            $phoneDigits = preg_replace('/\D+/', '', $q) ?? '';
-            $parts[] = '(
-                p.patient_code LIKE :code
-                OR p.name LIKE :name
-                OR p.phone LIKE :phone
-                OR (:has_phone_digits = 1 AND REPLACE(REPLACE(REPLACE(p.phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits)
-            )';
-            $bind['code'] = '%' . strtoupper(str_replace(' ', '', $q)) . '%';
-            $bind['name'] = '%' . $q . '%';
-            $bind['phone'] = '%' . $q . '%';
-            $bind['has_phone_digits'] = $phoneDigits !== '' ? 1 : 0;
-            $bind['phone_digits'] = $phoneDigits !== '' ? '%' . $phoneDigits . '%' : '0';
+            $search = db_patient_search_clause('p', $q);
+            $parts[] = $search['sql'];
+            $bind = array_merge($bind, $search['bind']);
         }
 
         $gender = (string) ($filters['gender'] ?? '');
@@ -301,33 +281,20 @@ final class Patient
         }
 
         $limit = max(1, min($limit, 15));
-        $nameLike = '%' . $query . '%';
-        $codeLike = '%' . strtoupper(str_replace(' ', '', $query)) . '%';
-        $phoneLike = '%' . $query . '%';
-        $phoneDigits = preg_replace('/\D+/', '', $query) ?? '';
-        $phoneDigitsLike = $phoneDigits !== '' ? '%' . $phoneDigits . '%' : '';
+        $search = db_patient_search_clause('', $query);
+        $codeLike = $search['bind']['code'];
 
         $stmt = db()->prepare(
             'SELECT patient_code, name, phone
              FROM patients
              WHERE patient_code IS NOT NULL
-               AND (
-                 patient_code LIKE :code
-                 OR name LIKE :name
-                 OR phone LIKE :phone
-                 OR (:has_phone_digits = 1 AND REPLACE(REPLACE(REPLACE(phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits)
-               )
+               AND ' . $search['sql'] . '
              ORDER BY
                CASE WHEN patient_code LIKE :code_order THEN 0 ELSE 1 END,
                name ASC
              LIMIT :lim'
         );
-        $stmt->bindValue(':code', $codeLike);
-        $stmt->bindValue(':code_order', $codeLike);
-        $stmt->bindValue(':name', $nameLike);
-        $stmt->bindValue(':phone', $phoneLike);
-        $stmt->bindValue(':has_phone_digits', $phoneDigits !== '' ? 1 : 0, PDO::PARAM_INT);
-        $stmt->bindValue(':phone_digits', $phoneDigitsLike !== '' ? $phoneDigitsLike : '0');
+        db_bind_named($stmt, array_merge($search['bind'], ['code_order' => $codeLike]), $search['int_keys']);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -464,7 +431,7 @@ final class Patient
             return $delivery;
         }
 
-        return '—';
+        return '';
     }
 
     /**
@@ -492,12 +459,17 @@ final class Patient
             return;
         }
 
-        $ins = $pdo->prepare(
-            'INSERT INTO patient_symptoms (patient_id, symptom_id) VALUES (:pid, :sid)'
-        );
-        foreach ($finalIds as $sid) {
-            $ins->execute(['pid' => $patientId, 'sid' => $sid]);
+        $valueParts = [];
+        $params = ['pid' => $patientId];
+        foreach ($finalIds as $index => $sid) {
+            $key = 'sid' . $index;
+            $valueParts[] = '(:pid, :' . $key . ')';
+            $params[$key] = $sid;
         }
+        $ins = $pdo->prepare(
+            'INSERT INTO patient_symptoms (patient_id, symptom_id) VALUES ' . implode(', ', $valueParts)
+        );
+        $ins->execute($params);
     }
 
     /**

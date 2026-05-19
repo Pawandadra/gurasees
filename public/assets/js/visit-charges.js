@@ -16,6 +16,8 @@
     var currency = root.getAttribute('data-currency') || '₹';
     var gstVisit = parseFloat(root.getAttribute('data-gst-visit') || '0') || 0;
     var gstMedicine = parseFloat(root.getAttribute('data-gst-medicine') || '0') || 0;
+    var gstCourier = parseFloat(root.getAttribute('data-gst-courier') || '0') || 0;
+    var courierChargeDefault = parseFloat(root.getAttribute('data-courier-charge') || '0') || 0;
 
     var visitChargeInput = document.getElementById('visit_charge');
     var searchInput = document.getElementById('visitMedicineSearchInput');
@@ -30,10 +32,38 @@
     var summaryVisitGst = document.getElementById('summaryVisitGst');
     var summaryMedicineSubtotal = document.getElementById('summaryMedicineSubtotal');
     var summaryMedicineGst = document.getElementById('summaryMedicineGst');
+    var summaryCourierCharge = document.getElementById('summaryCourierCharge');
+    var summaryCourierGst = document.getElementById('summaryCourierGst');
     var summaryGrandTotal = document.getElementById('summaryGrandTotal');
+    var courierSummaryRows = root.querySelectorAll('.visit-billing-courier-row');
 
     var cart = {};
     var activeIndex = -1;
+
+    function cartLine(id) {
+        var entry = cart[String(id)];
+        if (entry && typeof entry === 'object') {
+            return entry;
+        }
+        var qty = parseInt(entry, 10);
+        return { qty: Number.isFinite(qty) && qty > 0 ? qty : 0, courier: false };
+    }
+
+    function cartQty(id) {
+        return cartLine(id).qty;
+    }
+
+    function cartCourier(id) {
+        return cartLine(id).courier;
+    }
+
+    function setCartLine(id, qty, courier) {
+        if (qty < 1) {
+            delete cart[String(id)];
+            return;
+        }
+        cart[String(id)] = { qty: qty, courier: !!courier };
+    }
 
     function formatMoney(value) {
         return currency + Number(value).toFixed(2);
@@ -68,7 +98,7 @@
         var total = 0;
         Object.keys(cart).forEach(function (id) {
             var med = medicineById(id);
-            var qty = cart[id];
+            var qty = cartQty(id);
             if (med && qty > 0) {
                 total += parseFloat(med.unit_price) * qty;
             }
@@ -76,12 +106,22 @@
         return Math.round(total * 100) / 100;
     }
 
+    function hasCourierItems() {
+        return Object.keys(cart).some(function (id) {
+            return cartCourier(id);
+        });
+    }
+
     function updateSummary() {
         var visitCharge = parseVisitCharge();
         var visitGst = gstAmount(visitCharge, gstVisit);
         var medSubtotal = medicineSubtotal();
         var medGst = gstAmount(medSubtotal, gstMedicine);
-        var grand = Math.round((visitCharge + visitGst + medSubtotal + medGst) * 100) / 100;
+        var courierCharge = hasCourierItems() ? courierChargeDefault : 0;
+        var courierGst = gstAmount(courierCharge, gstCourier);
+        var grand = Math.round(
+            (visitCharge + visitGst + medSubtotal + medGst + courierCharge + courierGst) * 100
+        ) / 100;
 
         if (summaryVisitCharge) {
             summaryVisitCharge.textContent = formatMoney(visitCharge);
@@ -95,8 +135,21 @@
         if (summaryMedicineGst) {
             summaryMedicineGst.textContent = formatMoney(medGst);
         }
+        courierSummaryRows.forEach(function (row) {
+            row.classList.toggle('d-none', !hasCourierItems());
+        });
+        if (summaryCourierCharge) {
+            summaryCourierCharge.textContent = formatMoney(courierCharge);
+        }
+        if (summaryCourierGst) {
+            summaryCourierGst.textContent = formatMoney(courierGst);
+        }
         if (summaryGrandTotal) {
             summaryGrandTotal.textContent = formatMoney(grand);
+        }
+
+        if (typeof window.updateVisitPaymentFields === 'function') {
+            window.updateVisitPaymentFields(grand);
         }
     }
 
@@ -106,7 +159,7 @@
         }
         hiddenEl.innerHTML = '';
         Object.keys(cart).forEach(function (id) {
-            var qty = cart[id];
+            var qty = cartQty(id);
             if (qty < 1) {
                 return;
             }
@@ -118,8 +171,13 @@
             qtyInput.type = 'hidden';
             qtyInput.name = 'medicine_qty[]';
             qtyInput.value = String(qty);
+            var courierInput = document.createElement('input');
+            courierInput.type = 'hidden';
+            courierInput.name = 'medicine_courier[]';
+            courierInput.value = cartCourier(id) ? '1' : '0';
             hiddenEl.appendChild(idInput);
             hiddenEl.appendChild(qtyInput);
+            hiddenEl.appendChild(courierInput);
         });
     }
 
@@ -152,13 +210,19 @@
                 return;
             }
 
-            var qty = cart[id];
+            var qty = cartQty(id);
+            var forCourier = cartCourier(id);
             var row = document.createElement('tr');
             row.className = 'visit-medicine-cart-row';
             row.innerHTML =
                 '<td><span class="fw-medium">' + escapeHtml(med.name) + '</span></td>' +
                 '<td class="text-center"><label class="visually-hidden">' + escapeHtml(root.getAttribute('data-label-qty') || 'Qty') + '</label>' +
                 '<input type="number" class="form-control form-control-sm visit-cart-qty mx-auto" min="1" step="1" value="' + qty + '" data-id="' + id + '"></td>' +
+                '<td class="text-center visit-cart-courier-cell">' +
+                '<label class="visit-cart-courier-label mb-0" title="' + escapeHtml(root.getAttribute('data-label-courier') || 'Courier') + '">' +
+                '<input type="checkbox" class="form-check-input visit-cart-courier" data-id="' + id + '"' + (forCourier ? ' checked' : '') + '>' +
+                '<span class="visually-hidden">' + escapeHtml(root.getAttribute('data-label-courier') || 'Courier') + '</span>' +
+                '</label></td>' +
                 '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger visit-cart-remove px-2" data-id="' + id + '" title="' +
                 escapeHtml(root.getAttribute('data-label-remove') || 'Remove') + '">×</button></td>';
 
@@ -172,8 +236,20 @@
                 if (!medId || !Number.isFinite(val) || val < 1) {
                     return;
                 }
-                cart[medId] = val;
+                setCartLine(medId, val, cartCourier(medId));
                 renderCart();
+                syncHiddenInputs();
+                updateSummary();
+            });
+        });
+
+        cartEl.querySelectorAll('.visit-cart-courier').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var medId = input.getAttribute('data-id');
+                if (!medId) {
+                    return;
+                }
+                setCartLine(medId, cartQty(medId), input.checked);
                 syncHiddenInputs();
                 updateSummary();
             });
@@ -235,7 +311,7 @@
 
     function addMedicine(id) {
         var key = String(id);
-        cart[key] = (cart[key] || 0) + 1;
+        setCartLine(key, cartQty(key) + 1, cartCourier(key));
         renderCart();
         if (searchInput) {
             searchInput.value = '';
@@ -339,8 +415,9 @@
     initial.forEach(function (line) {
         var id = String(line.medicine_id);
         var qty = parseInt(line.quantity, 10);
+        var courierQty = parseInt(line.courier_quantity, 10);
         if (id && qty > 0) {
-            cart[id] = qty;
+            setCartLine(id, qty, courierQty > 0);
         }
     });
 

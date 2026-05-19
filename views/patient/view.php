@@ -163,29 +163,49 @@ ob_start();
                 <table class="table table-hover reception-table visit-history-table mb-0">
                     <thead>
                     <tr>
-                        <th scope="col"><?= e(__('visit.field.datetime')) ?></th>
                         <th scope="col"><?= e(__('visit.field.medicines')) ?></th>
                         <th scope="col" class="text-end"><?= e(__('visit.field.grand_total')) ?></th>
+                        <th scope="col"><?= e(__('payment.field.method')) ?></th>
+                        <th scope="col"><?= e(__('payment.field.status')) ?></th>
                         <th scope="col"><?= e(__('visit.field.notes')) ?></th>
+                        <th scope="col"><?= e(__('visit.field.time')) ?></th>
                         <th scope="col"><?= e(__('visit.field.recorded_by')) ?></th>
                     </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($visits as $visit): ?>
-                        <?php
+                    <?php
+                    $lastDateKey = null;
+                    $dateHeaderColspan = 7;
+                    foreach ($visits as $visit):
+                        $dateKey = Visit::visitedDateKey((string) $visit['visited_at']);
+                        if ($dateKey !== $lastDateKey) {
+                            $lastDateKey = $dateKey;
+                            $colspan = $dateHeaderColspan;
+                            require BASE_PATH . '/views/partials/visit_date_header_row.php';
+                        }
                         $lines = $visit['medicine_lines'] ?? [];
                         $grandTotal = (float) ($visit['grand_total'] ?? 0);
                         ?>
                         <tr>
-                            <td class="text-nowrap"><?= e(Visit::formatVisitedAt((string) $visit['visited_at'])) ?></td>
-                            <td class="small visit-history-medicines"><?= e(Visit::formatMedicineSummary($lines)) ?></td>
+                            <td class="small visit-history-medicines"><?= table_cell(Visit::formatMedicineSummary($lines)) ?></td>
                             <td class="text-end fw-semibold text-nowrap">
                                 <?= $grandTotal > 0
                                     ? e(Medicine::formatPriceDisplay($grandTotal))
-                                    : '—' ?>
+                                    : table_na() ?>
                             </td>
-                            <td class="small"><?= e((string) ($visit['notes'] ?: '—')) ?></td>
-                            <td class="small text-nowrap"><?= e((string) ($visit['recorded_by_name'] ?: '—')) ?></td>
+                            <td class="small text-nowrap">
+                                <?= !empty($visit['payment_method'])
+                                    ? e(PaymentSettings::methodLabel((string) $visit['payment_method']))
+                                    : table_na() ?>
+                            </td>
+                            <td class="small text-nowrap">
+                                <?= !empty($visit['payment_status'])
+                                    ? e(PaymentSettings::statusLabel((string) $visit['payment_status']))
+                                    : table_na() ?>
+                            </td>
+                            <td class="small"><?= table_cell($visit['notes'] ?? '') ?></td>
+                            <td class="text-nowrap small"><?= e(Visit::formatVisitedTime((string) $visit['visited_at'])) ?></td>
+                            <td class="small text-nowrap"><?= table_cell($visit['recorded_by_name'] ?? '') ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -195,6 +215,6 @@ ob_start();
     </div>
 </section>
 <?php
-$pageScripts = ['assets/js/visit-charges.js'];
+$pageScripts = ['assets/js/visit-charges.js', 'assets/js/visit-payment-fields.js'];
 $content = ob_get_clean();
 require BASE_PATH . '/views/layouts/dashboard.php';

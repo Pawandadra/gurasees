@@ -39,7 +39,10 @@ final class Symptom
      */
     public static function filterActiveIds(array $ids): array
     {
-        $allowed = array_flip(self::activeIds());
+        static $allowed = null;
+        if ($allowed === null) {
+            $allowed = array_flip(self::activeIds());
+        }
         $valid = [];
         foreach ($ids as $id) {
             $id = (int) $id;

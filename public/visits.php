@@ -5,6 +5,8 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/app/bootstrap.php';
 load_model('Visit');
 load_model('Medicine');
+load_model('Patient');
+load_model('PaymentSettings');
 
 auth_require();
 auth_require_role(['receptionist', 'manager', 'admin']);
@@ -36,10 +38,12 @@ try {
     );
     $visitRows = $listResult['rows'];
     $totalVisits = $listResult['total'];
+    $todayVisits = Visit::countToday();
     $dbError = false;
 } catch (Throwable) {
     $visitRows = [];
     $totalVisits = 0;
+    $todayVisits = 0;
     $dbError = true;
 }
 
@@ -51,6 +55,7 @@ view('visits/index', array_merge(
     compact(
         'visitRows',
         'totalVisits',
+        'todayVisits',
         'totalPages',
         'page',
         'perPage',

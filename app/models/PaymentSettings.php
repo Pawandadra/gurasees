@@ -60,6 +60,120 @@ final class PaymentSettings
     }
 
     /**
+     * @return array{payment_method: string, payment_status: string, payment_paid_amount: string}
+     */
+    public static function visitDefaults(): array
+    {
+        return [
+            'payment_method' => self::defaultMethod(),
+            'payment_status' => self::defaultStatus(),
+            'payment_paid_amount' => '',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $raw
+     * @return array{payment_method: string|null, payment_status: string|null, payment_paid_amount: float|null}
+     */
+    public static function sanitizeVisitPayment(array $raw, float $grandTotal): array
+    {
+        $grandTotal = max(0.0, round($grandTotal, 2));
+        if ($grandTotal <= 0) {
+            return [
+                'payment_method' => null,
+                'payment_status' => 'paid',
+                'payment_paid_amount' => 0.0,
+            ];
+        }
+
+        $method = input_string($raw['payment_method'] ?? '', 10);
+        $status = input_string($raw['payment_status'] ?? '', 10);
+        $paidRaw = trim((string) ($raw['payment_paid_amount'] ?? ''));
+        $paidAmount = is_numeric($paidRaw) ? max(0.0, round((float) $paidRaw, 2)) : 0.0;
+
+        if (!in_array($method, self::METHODS, true)) {
+            $method = '';
+        }
+        if (!in_array($status, self::STATUSES, true)) {
+            $status = '';
+        }
+
+        if ($status === 'paid') {
+            $paidAmount = $grandTotal;
+        } elseif ($status === 'pending') {
+            $paidAmount = 0.0;
+        }
+
+        return [
+            'payment_method' => $method !== '' ? $method : null,
+            'payment_status' => $status !== '' ? $status : null,
+            'payment_paid_amount' => $status === 'partial' ? $paidAmount : ($status === 'paid' ? $grandTotal : 0.0),
+        ];
+    }
+
+    /**
+     * @param array{payment_method: string|null, payment_status: string|null, payment_paid_amount: float|null} $payment
+     * @return array<string, string>
+     */
+    public static function validateVisitPayment(array $payment, float $grandTotal): array
+    {
+        $grandTotal = max(0.0, round($grandTotal, 2));
+        if ($grandTotal <= 0) {
+            return [];
+        }
+
+        $errors = [];
+
+        if ($payment['payment_method'] === null) {
+            $errors['payment_method'] = __('payment.error.method');
+        }
+
+        if ($payment['payment_status'] === null) {
+            $errors['payment_status'] = __('payment.error.status');
+        }
+
+        if ($payment['payment_status'] === 'partial') {
+            $paid = (float) ($payment['payment_paid_amount'] ?? 0);
+            if ($paid <= 0) {
+                $errors['payment_paid_amount'] = __('payment.error.paid_amount');
+            } elseif ($paid >= $grandTotal) {
+                $errors['payment_paid_amount'] = __('payment.error.paid_amount_less');
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param array<string, mixed> $visit
+     */
+    public static function formatVisitPaymentSummary(array $visit): string
+    {
+        $status = (string) ($visit['payment_status'] ?? '');
+        if ($status === '') {
+            return '';
+        }
+
+        $parts = [];
+        $method = (string) ($visit['payment_method'] ?? '');
+        if ($method !== '') {
+            $parts[] = self::methodLabel($method);
+        }
+        $parts[] = self::statusLabel($status);
+
+        if ($status === 'partial') {
+            $paid = (float) ($visit['payment_paid_amount'] ?? 0);
+            $grandTotal = (float) ($visit['grand_total'] ?? 0);
+            $parts[] = __('payment.summary.paid_of', [
+                'paid' => self::formatAmount($paid),
+                'total' => self::formatAmount($grandTotal),
+            ]);
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    /**
      * @return array{ok: true}|array{ok: false, errors: array<string, string>}
      */
     public static function saveDefaults(array $raw): array

@@ -30,6 +30,13 @@ function nav_items(string $role): array
             'roles' => ['receptionist', 'manager', 'admin'],
         ],
         [
+            'id' => 'courier',
+            'url' => '/courier.php',
+            'label' => __('nav.courier'),
+            'icon' => 'courier',
+            'roles' => ['manager', 'admin'],
+        ],
+        [
             'id' => 'symptoms',
             'url' => '/symptoms.php',
             'label' => __('nav.symptoms'),
@@ -79,6 +86,7 @@ function nav_active_id(): string
     return match ($script) {
         'patients' => 'patients',
         'visits' => 'visits',
+        'courier' => 'courier',
         'symptoms' => 'symptoms',
         'medicines' => 'medicines',
         'payment_settings' => 'payment_settings',

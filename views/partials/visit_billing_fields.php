@@ -17,9 +17,12 @@ $visitBilling = $visitBilling ?? Visit::billingDefaults();
      data-medicines="<?= e(json_encode($catalogMedicines, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)) ?>"
      data-gst-visit="<?= e($visitBilling['gst_visit_percent']) ?>"
      data-gst-medicine="<?= e($visitBilling['gst_medicine_percent']) ?>"
+     data-gst-courier="<?= e($visitBilling['gst_courier_percent']) ?>"
+     data-courier-charge="<?= e($visitBilling['courier_charge']) ?>"
      data-label-empty="<?= e(__('visit.medicine.search_empty')) ?>"
      data-label-qty="<?= e(__('visit.medicine.field.quantity')) ?>"
      data-label-remove="<?= e(__('visit.medicine.remove_line')) ?>"
+     data-label-courier="<?= e(__('visit.courier.add_to_list')) ?>"
      data-currency="₹">
 
     <?php if (isset($visitErrors['medicines'])): ?>
@@ -59,6 +62,7 @@ $visitBilling = $visitBilling ?? Visit::billingDefaults();
                             <tr>
                                 <th scope="col"><?= e(__('visit.medicine.table.name')) ?></th>
                                 <th scope="col" class="text-center visit-medicine-th-qty"><?= e(__('visit.medicine.field.quantity')) ?></th>
+                                <th scope="col" class="text-center visit-medicine-th-courier"><?= e(__('visit.courier.column')) ?></th>
                                 <th scope="col" class="visit-medicine-th-action"><span class="visually-hidden"><?= e(__('visit.medicine.table.action')) ?></span></th>
                             </tr>
                             </thead>
@@ -93,13 +97,23 @@ $visitBilling = $visitBilling ?? Visit::billingDefaults();
                         <dt id="summaryMedicineGstLabel"><?= e(__('visit.field.medicine_gst', ['percent' => $visitBilling['gst_medicine_percent']])) ?></dt>
                         <dd id="summaryMedicineGst">₹0.00</dd>
                     </div>
+                    <div class="visit-billing-summary-row visit-billing-courier-row d-none">
+                        <dt><?= e(__('visit.field.courier_charge')) ?></dt>
+                        <dd id="summaryCourierCharge">₹0.00</dd>
+                    </div>
+                    <div class="visit-billing-summary-row visit-billing-courier-row d-none">
+                        <dt id="summaryCourierGstLabel"><?= e(__('visit.field.courier_gst', ['percent' => $visitBilling['gst_courier_percent']])) ?></dt>
+                        <dd id="summaryCourierGst">₹0.00</dd>
+                    </div>
                     <div class="visit-billing-summary-row visit-billing-summary-total">
                         <dt><?= e(__('visit.field.grand_total')) ?></dt>
                         <dd id="summaryGrandTotal">₹0.00</dd>
                     </div>
                 </dl>
 
-                <button type="submit" class="btn btn-reception-primary btn-lg w-100">
+                <?php require BASE_PATH . '/views/partials/visit_payment_fields.php'; ?>
+
+                <button type="submit" class="btn btn-reception-primary btn-lg w-100 mt-3">
                     <?= e(__('visit.add.submit')) ?>
                 </button>
             </div>

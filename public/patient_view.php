@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 load_model('Patient');
 load_model('Visit');
 load_model('Medicine');
+load_model('PaymentSettings');
 
 auth_require();
 auth_require_role(['receptionist', 'manager', 'admin']);
@@ -29,12 +30,15 @@ $listFilters = $return === 'visits'
 
 $visitErrors = [];
 $visitBilling = Visit::billingDefaults();
-$visitOld = [
-    'visited_at' => (new DateTimeImmutable('now'))->format('Y-m-d\TH:i'),
-    'notes' => '',
-    'visit_charge' => $visitBilling['visit_charge'],
-    'medicines' => [],
-];
+$visitOld = array_merge(
+    [
+        'visited_at' => (new DateTimeImmutable('now'))->format('Y-m-d\TH:i'),
+        'notes' => '',
+        'visit_charge' => $visitBilling['visit_charge'],
+        'medicines' => [],
+    ],
+    PaymentSettings::visitDefaults()
+);
 
 try {
     $catalogMedicines = Medicine::listForReception();
@@ -55,15 +59,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_v
 
     $visitErrors = $result['errors'];
     $parsedLines = Visit::parseMedicineLines($_POST);
-    $visitOld = [
+    $visitOld = array_merge($visitOld, [
         'visited_at' => (string) ($_POST['visited_at'] ?? $visitOld['visited_at']),
         'notes' => input_string($_POST['notes'] ?? '', 500),
         'visit_charge' => trim((string) ($_POST['visit_charge'] ?? $visitOld['visit_charge'])),
+        'payment_method' => input_string($_POST['payment_method'] ?? '', 10),
+        'payment_status' => input_string($_POST['payment_status'] ?? '', 10),
+        'payment_paid_amount' => trim((string) ($_POST['payment_paid_amount'] ?? '')),
         'medicines' => array_values(array_filter(
-            $parsedLines,
-            static fn (array $line): bool => (int) $line['medicine_id'] > 0 && (int) $line['quantity'] > 0
+            array_map(
+                static fn (array $line): array => [
+                    'medicine_id' => (int) $line['medicine_id'],
+                    'quantity' => (int) $line['quantity'],
+                    'courier_quantity' => (int) ($line['courier_quantity'] ?? 0),
+                ],
+                $parsedLines
+            ),
+            static fn (array $line): bool => $line['medicine_id'] > 0 && $line['quantity'] > 0
         )),
-    ];
+    ]);
+    $visitBilling['payment_method'] = $visitOld['payment_method'];
+    $visitBilling['payment_status'] = $visitOld['payment_status'];
+    $visitBilling['payment_paid_amount'] = $visitOld['payment_paid_amount'];
 }
 
 $pageTitle = __('patient.view.title');

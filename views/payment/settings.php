@@ -101,6 +101,17 @@ ob_start();
                 </div>
                 <?php show_field_error($errors, 'gst_medicine_percent'); ?>
             </div>
+            <div class="col-md-4">
+                <label for="gst_courier_percent" class="form-label"><?= e(__('gst.field.courier')) ?></label>
+                <div class="input-group">
+                    <input type="number" class="form-control<?= field_invalid($errors, 'gst_courier_percent') ?>"
+                           id="gst_courier_percent" name="gst_courier_percent"
+                           min="0" max="100" step="0.01"
+                           value="<?= e($old['gst_courier_percent']) ?>">
+                    <span class="input-group-text">%</span>
+                </div>
+                <?php show_field_error($errors, 'gst_courier_percent'); ?>
+            </div>
         </div>
     </section>
 
@@ -118,6 +129,25 @@ ob_start();
                            value="<?= e($old['visit_default_charge']) ?>">
                 </div>
                 <?php show_field_error($errors, 'visit_default_charge'); ?>
+            </div>
+        </div>
+    </section>
+
+    <section class="reception-card reception-form mb-4">
+        <h2 class="reception-card-title h6 mb-3"><?= e(__('courier.settings.title')) ?></h2>
+        <p class="text-muted small mb-3"><?= e(__('courier.settings.hint')) ?></p>
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label for="courier_default_charge" class="form-label"><?= e(__('visit.field.courier_charge')) ?></label>
+                <div class="input-group">
+                    <span class="input-group-text">₹</span>
+                    <input type="number" class="form-control<?= field_invalid($errors, 'courier_default_charge') ?>"
+                           id="courier_default_charge" name="courier_default_charge" min="0" step="0.01"
+                           value="<?= e($old['courier_default_charge']) ?>">
+                </div>
+                <?php show_field_error($errors, 'courier_default_charge'); ?>
+                <p class="form-text mb-0"><?= e(__('courier.settings.charge_hint')) ?></p>
             </div>
         </div>
     </section>

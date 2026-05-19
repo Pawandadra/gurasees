@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /** @var list<array<string, mixed>> $visitRows */
 /** @var int $totalVisits */
+/** @var int $todayVisits */
 /** @var int $totalPages */
 /** @var int $page */
 /** @var string $sort */
@@ -20,13 +21,16 @@ $hasFilters = visit_list_has_active_filters($filterState);
 $sortFilterQuery = visit_list_query_filters($filterState);
 $tableListFilters = patient_build_list_query($sort, $dir, array_merge($sortFilterQuery, ['page' => $page > 1 ? $page : null]));
 $visitColumns = [
-    'date' => __('visit.field.datetime'),
     'patient_id' => __('patient.field.id'),
     'patient' => __('patient.field.name'),
+    'age' => __('patient.field.age'),
+    'gender' => __('patient.field.gender'),
+    'phone' => __('patient.field.phone'),
     'medicines' => __('visit.field.medicines'),
-    'visit_charge' => __('visits.list.col.visit_charges'),
-    'medicine_total' => __('visits.list.col.medicines'),
     'total' => __('visit.field.grand_total'),
+    'payment_method' => __('payment.field.method'),
+    'payment_status' => __('payment.field.status'),
+    'date' => __('visit.field.time'),
     'recorded_by' => __('visit.field.recorded_by'),
 ];
 
@@ -88,7 +92,7 @@ ob_start();
 
     <section class="reception-card">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 class="reception-card-title h6 mb-0"><?= e(__('visits.list.results', ['count' => $totalVisits])) ?></h2>
+            <h2 class="reception-card-title h6 mb-0"><?= e(__('visits.list.today', ['count' => $todayVisits])) ?></h2>
             <?php if ($totalPages > 1): ?>
                 <p class="text-muted small mb-0">
                     <?= e(__('patients.list.page', ['page' => $page, 'pages' => $totalPages])) ?>

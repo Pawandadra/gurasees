@@ -41,6 +41,29 @@ function show_field_error(array $errors, string $field): void
     echo '<div class="invalid-feedback d-block">' . e($errors[$field]) . '</div>';
 }
 
+/** Faded N/A placeholder for empty table cells (returns HTML). */
+function table_na(): string
+{
+    return '<span class="table-cell-na">' . e(__('table.na')) . '</span>';
+}
+
+/**
+ * Render a table cell value, or faded N/A when empty.
+ */
+function table_cell(mixed $value, bool $treatZeroAsEmpty = false): string
+{
+    if ($treatZeroAsEmpty && is_numeric($value) && (float) $value === 0.0) {
+        return table_na();
+    }
+
+    $text = trim((string) $value);
+    if ($text === '' || $text === '—') {
+        return table_na();
+    }
+
+    return e($text);
+}
+
 /** @return 'dashboard'|'patients'|'visits' */
 function patient_return_from_request(): string
 {

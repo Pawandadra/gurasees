@@ -31,6 +31,37 @@
         input.setAttribute('aria-expanded', 'true');
     }
 
+    function appendRegisterAction() {
+        var registerUrl = wrap.getAttribute('data-register-url');
+        if (!registerUrl) {
+            return false;
+        }
+
+        var link = document.createElement('a');
+        link.className = 'header-patient-search-register';
+        link.href = registerUrl;
+        link.setAttribute('role', 'option');
+        link.textContent = wrap.getAttribute('data-register-label') || 'Register new patient';
+        link.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+        });
+        resultsEl.appendChild(link);
+        return true;
+    }
+
+    function showRegisterOnly() {
+        if (!wrap.getAttribute('data-register-url')) {
+            hideResults();
+            return;
+        }
+
+        resultsEl.innerHTML = '';
+        items = [];
+        activeIndex = -1;
+        appendRegisterAction();
+        showResults();
+    }
+
     function renderResults(results) {
         resultsEl.innerHTML = '';
         items = results;
@@ -41,28 +72,27 @@
             empty.className = 'header-patient-search-empty';
             empty.textContent = wrap.getAttribute('data-empty-label') || 'No patients found';
             resultsEl.appendChild(empty);
-            showResults();
-            return;
+        } else {
+            results.forEach(function (item) {
+                var btn = document.createElement('a');
+                btn.className = 'header-patient-search-item';
+                btn.href = item.url;
+                btn.setAttribute('role', 'option');
+                var phoneLine = item.phone
+                    ? '<span class="header-patient-search-phone">' + escapeHtml(item.phone) + '</span>'
+                    : '';
+                btn.innerHTML =
+                    '<span class="header-patient-search-code">' + escapeHtml(item.code) + '</span>' +
+                    '<span class="header-patient-search-name">' + escapeHtml(item.name) + '</span>' +
+                    phoneLine;
+                btn.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                resultsEl.appendChild(btn);
+            });
         }
 
-        results.forEach(function (item, index) {
-            var btn = document.createElement('a');
-            btn.className = 'header-patient-search-item';
-            btn.href = item.url;
-            btn.setAttribute('role', 'option');
-            var phoneLine = item.phone
-                ? '<span class="header-patient-search-phone">' + escapeHtml(item.phone) + '</span>'
-                : '';
-            btn.innerHTML =
-                '<span class="header-patient-search-code">' + escapeHtml(item.code) + '</span>' +
-                '<span class="header-patient-search-name">' + escapeHtml(item.name) + '</span>' +
-                phoneLine;
-            btn.addEventListener('mousedown', function (event) {
-                event.preventDefault();
-            });
-            resultsEl.appendChild(btn);
-        });
-
+        appendRegisterAction();
         showResults();
     }
 
@@ -93,19 +123,25 @@
     }
 
     function setActive(index) {
-        var links = resultsEl.querySelectorAll('.header-patient-search-item');
+        var links = resultsEl.querySelectorAll('.header-patient-search-item, .header-patient-search-register');
         links.forEach(function (link, i) {
             link.classList.toggle('active', i === index);
         });
         activeIndex = index;
     }
 
+    input.addEventListener('focus', function () {
+        if (input.value.trim().length < 2) {
+            showRegisterOnly();
+        }
+    });
+
     input.addEventListener('input', function () {
         var query = input.value.trim();
         clearTimeout(debounceTimer);
 
         if (query.length < 2) {
-            hideResults();
+            showRegisterOnly();
             return;
         }
 
@@ -115,7 +151,7 @@
     });
 
     input.addEventListener('keydown', function (event) {
-        var links = resultsEl.querySelectorAll('.header-patient-search-item');
+        var links = resultsEl.querySelectorAll('.header-patient-search-item, .header-patient-search-register');
         if (!links.length) {
             return;
         }
@@ -126,9 +162,20 @@
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
             setActive(Math.max(activeIndex - 1, 0));
-        } else if (event.key === 'Enter' && activeIndex >= 0) {
+        } else if (event.key === 'Enter') {
             event.preventDefault();
-            window.location.href = links[activeIndex].href;
+            var target;
+            if (activeIndex >= 0) {
+                target = links[activeIndex];
+            } else {
+                var patientLinks = resultsEl.querySelectorAll('.header-patient-search-item');
+                target = patientLinks.length > 0
+                    ? patientLinks[0]
+                    : resultsEl.querySelector('.header-patient-search-register');
+            }
+            if (target && target.href) {
+                window.location.href = target.href;
+            }
         } else if (event.key === 'Escape') {
             hideResults();
         }

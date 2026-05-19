@@ -58,7 +58,7 @@ ob_start();
         <div class="alert alert-danger"><?= e($errors['_form']) ?></div>
     <?php endif; ?>
 
-    <section class="reception-card reception-form mb-4">
+    <section class="reception-card reception-form mb-4" id="patient-register">
         <h2 class="reception-card-title h6 mb-3"><?= e(__('patient.register.title')) ?></h2>
 
         <form method="post" action="<?= e(base_url('/dashboard.php')) ?>" novalidate>

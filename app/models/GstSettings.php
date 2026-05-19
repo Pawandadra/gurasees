@@ -9,6 +9,7 @@ final class GstSettings
     private const KEY_REGISTRATION = 'gst.registration_percent';
     private const KEY_VISIT_CHARGE = 'gst.visit_charge_percent';
     private const KEY_MEDICINE = 'gst.medicine_percent';
+    private const KEY_COURIER = 'gst.courier_percent';
 
     private const DEFAULT_PERCENT = 5.0;
 
@@ -25,6 +26,11 @@ final class GstSettings
     public static function medicinePercent(): float
     {
         return self::readPercent(self::KEY_MEDICINE);
+    }
+
+    public static function courierPercent(): float
+    {
+        return self::readPercent(self::KEY_COURIER);
     }
 
     public static function amountOnBase(float $base, float $percent): float
@@ -50,6 +56,7 @@ final class GstSettings
             'gst_registration_percent' => self::KEY_REGISTRATION,
             'gst_visit_percent' => self::KEY_VISIT_CHARGE,
             'gst_medicine_percent' => self::KEY_MEDICINE,
+            'gst_courier_percent' => self::KEY_COURIER,
         ];
 
         $errors = [];
@@ -73,7 +80,7 @@ final class GstSettings
     }
 
     /**
-     * @return array{gst_registration_percent: string, gst_visit_percent: string, gst_medicine_percent: string}
+     * @return array{gst_registration_percent: string, gst_visit_percent: string, gst_medicine_percent: string, gst_courier_percent: string}
      */
     public static function formDefaults(): array
     {
@@ -81,6 +88,7 @@ final class GstSettings
             'gst_registration_percent' => self::formatPercent(self::registrationPercent()),
             'gst_visit_percent' => self::formatPercent(self::visitChargePercent()),
             'gst_medicine_percent' => self::formatPercent(self::medicinePercent()),
+            'gst_courier_percent' => self::formatPercent(self::courierPercent()),
         ];
     }
 

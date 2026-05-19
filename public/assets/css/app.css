@@ -115,6 +115,24 @@ html[lang="pa"] body {
   color: var(--gaa-muted);
 }
 
+.header-patient-search-register {
+  display: block;
+  padding: 0.6rem 0.85rem;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--gaa-teal-dark);
+  background: rgba(13, 92, 77, 0.06);
+  border-top: 1px solid rgba(13, 92, 77, 0.12);
+}
+
+.header-patient-search-register:hover,
+.header-patient-search-register.active {
+  background: var(--gaa-teal-light);
+  color: var(--gaa-teal-dark);
+}
+
 @media (max-width: 767.98px) {
   .header-patient-search {
     order: 3;
@@ -1086,8 +1104,33 @@ body.sidebar-open {
   width: 5.5rem;
 }
 
+.visit-medicine-th-courier {
+  width: 4.5rem;
+}
+
 .visit-medicine-th-action {
   width: 2.75rem;
+}
+
+.visit-cart-courier-cell {
+  vertical-align: middle;
+}
+
+.visit-cart-courier-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.courier-delivery-address {
+  max-width: 14rem;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.courier-pending-table .col-actions {
+  white-space: nowrap;
 }
 
 .visit-cart-qty {
@@ -1118,6 +1161,133 @@ body.sidebar-open {
 .visit-history-medicines {
   max-width: 14rem;
   line-height: 1.35;
+}
+
+.visit-records-date-row td {
+  background: transparent;
+  border-bottom: none;
+  color: var(--reception-primary, #0d5c4d);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  padding: 0.65rem 0.75rem 0.2rem 0.1rem;
+}
+
+.visit-records-date-row:first-child td {
+  padding-top: 0.35rem;
+}
+
+.visit-records-date-row + tr td {
+  border-top: none;
+}
+
+.table-cell-na {
+  color: var(--reception-primary, #0d5c4d);
+  font-size: 0.8125rem;
+  font-style: italic;
+  font-weight: 500;
+  opacity: 0.45;
+}
+
+.medicine-kind-badge {
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.medicine-kind-unit {
+  background: rgba(13, 92, 77, 0.1);
+  color: var(--reception-primary, #0d5c4d);
+}
+
+.medicine-kind-bulk {
+  background: rgba(13, 92, 77, 0.18);
+  color: #0a4a3d;
+}
+
+.medicine-inventory-table .medicine-kind-badge {
+  white-space: nowrap;
+}
+
+.medicine-portion-row td {
+  border-top: none;
+  padding-top: 0;
+}
+
+.medicine-portion-inline-form {
+  border-left: 3px solid rgba(13, 92, 77, 0.25);
+  padding-left: 0.75rem;
+}
+
+.medicine-add-fields {
+  --medicine-add-type-width: 8.5rem;
+}
+
+.medicine-add-type-col {
+  flex: 0 0 var(--medicine-add-type-width);
+  max-width: var(--medicine-add-type-width);
+  min-width: var(--medicine-add-type-width);
+}
+
+.medicine-add-fields .form-control,
+.medicine-add-fields .form-select,
+.medicine-add-fields .input-group > .form-control,
+.medicine-add-fields .input-group > .input-group-text,
+.medicine-add-fields .input-group > .volume-unit-toggle,
+.medicine-add-fields .medicine-add-submit-col .btn {
+  box-sizing: border-box;
+  height: 2.5rem;
+  min-height: 2.5rem;
+}
+
+.medicine-add-type-select {
+  padding-right: 1.75rem;
+}
+
+.medicine-add-fields .medicine-add-submit-col .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+.medicine-add-name-col {
+  flex: 1 1 8rem;
+  min-width: 7rem;
+}
+
+.medicine-add-unit-col,
+.medicine-add-bulk-col {
+  flex: 0 1 auto;
+  min-width: 6.5rem;
+}
+
+.medicine-add-submit-col {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1200px) {
+  .medicine-add-fields {
+    flex-wrap: nowrap !important;
+  }
+}
+
+.volume-unit-toggle {
+  cursor: pointer;
+  font-weight: 600;
+  min-width: 2.5rem;
+  user-select: none;
+}
+
+.volume-unit-toggle:hover {
+  background: rgba(13, 92, 77, 0.12);
+  color: var(--reception-primary, #0d5c4d);
 }
 
 .visit-medicine-search-results {
@@ -1158,6 +1328,58 @@ body.sidebar-open {
   padding: 0.75rem;
   color: #6c757d;
   font-size: 0.875rem;
+}
+
+.visit-payment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.visit-payment-row:has(.visit-payment-method-col:not(.d-none)) {
+  width: 100%;
+}
+
+/* Method + status only: status stays compact (same button width as when partial is shown). */
+.visit-payment-row:has(.visit-payment-method-col:not(.d-none)):not(:has(.visit-payment-partial-field:not(.d-none))) {
+  grid-template-columns: auto max-content;
+  justify-content: start;
+}
+
+.visit-payment-row:has(.visit-payment-method-col:not(.d-none)):not(:has(.visit-payment-partial-field:not(.d-none))) .visit-payment-status-col .payment-status-group {
+  width: max-content;
+}
+
+.visit-payment-row:has(.visit-payment-method-col:not(.d-none)):not(:has(.visit-payment-partial-field:not(.d-none))) .visit-payment-status-col .payment-status-group .btn {
+  flex: 0 1 auto;
+  min-width: 6.1rem;
+}
+
+/* All three fields: span the full row. */
+.visit-payment-row:has(.visit-payment-partial-field:not(.d-none)) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.visit-payment-row:has(.visit-payment-partial-field:not(.d-none)) .visit-payment-status-col .payment-status-group {
+  width: 100%;
+}
+
+.visit-payment-method-col .form-select,
+.visit-payment-partial-col .input-group {
+  width: 100%;
+  max-width: 8.25rem;
+}
+
+@media (max-width: 991.98px) {
+  .visit-payment-row:has(.visit-payment-method-col:not(.d-none)) {
+    grid-template-columns: 1fr;
+  }
+
+  .visit-payment-method-col .form-select,
+  .visit-payment-partial-col .input-group {
+    max-width: none;
+  }
 }
 
 .visit-billing-summary {

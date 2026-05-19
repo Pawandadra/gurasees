@@ -40,7 +40,7 @@ $actionExtra = $actionExtra ?? [];
                 <td><?= e((string) $row['age']) ?></td>
                 <td><?= e(Patient::genderLabel((string) $row['gender'])) ?></td>
                 <td><?= e(phone_format_display((string) $row['phone'])) ?></td>
-                <td class="col-address" title="<?= e((string) $row['address']) ?>"><?= e((string) $row['address']) ?></td>
+                <td class="col-address" title="<?= e((string) $row['address']) ?>"><?= table_cell($row['address'] ?? '') ?></td>
                 <td><?= e(Patient::formatListLastVisited($row)) ?></td>
                 <td class="col-actions">
                     <?php

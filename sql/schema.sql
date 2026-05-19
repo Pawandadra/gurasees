@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS patients (
     UNIQUE KEY uk_patient_code (patient_code),
     INDEX idx_phone (phone),
     INDEX idx_name (name),
-    INDEX idx_created (created_at)
+    INDEX idx_created (created_at),
+    INDEX idx_patients_gender (gender),
+    INDEX idx_patients_age (age)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------------
@@ -78,13 +80,35 @@ CREATE TABLE IF NOT EXISTS patient_symptoms (
 CREATE TABLE IF NOT EXISTS medicines (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
+    kind ENUM('unit', 'bulk') NOT NULL DEFAULT 'unit',
     unit_price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    bulk_source_id INT UNSIGNED NULL,
+    portion_size_ml INT UNSIGNED NULL,
     sort_order INT UNSIGNED NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_medicine_name (name),
-    INDEX idx_medicine_active (is_active, sort_order)
+    INDEX idx_medicine_active (is_active, sort_order),
+    INDEX idx_medicine_kind (kind, is_active),
+    INDEX idx_medicine_bulk_source (bulk_source_id),
+    CONSTRAINT fk_medicine_bulk_source FOREIGN KEY (bulk_source_id) REFERENCES medicines(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS medicine_portion_logs (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    bulk_medicine_id INT UNSIGNED NOT NULL,
+    sellable_medicine_id INT UNSIGNED NOT NULL,
+    portion_size_ml INT UNSIGNED NOT NULL,
+    bottles_created INT UNSIGNED NOT NULL,
+    ml_used INT UNSIGNED NOT NULL,
+    created_by INT UNSIGNED NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_portion_bulk FOREIGN KEY (bulk_medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_portion_sellable FOREIGN KEY (sellable_medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_portion_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_portion_bulk (bulk_medicine_id),
+    INDEX idx_portion_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS visits (
@@ -96,12 +120,22 @@ CREATE TABLE IF NOT EXISTS visits (
     visit_gst DECIMAL(10, 2) NOT NULL DEFAULT 0,
     medicine_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
     medicine_gst DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    courier_charge DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    courier_gst DECIMAL(10, 2) NOT NULL DEFAULT 0,
     grand_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    courier_dispatched_at DATETIME NULL,
+    courier_dispatched_by INT UNSIGNED NULL,
+    payment_method ENUM('cash', 'upi', 'card', 'bank', 'other') NULL,
+    payment_status ENUM('paid', 'pending', 'partial') NULL,
+    payment_paid_amount DECIMAL(10, 2) NULL,
     recorded_by INT UNSIGNED NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_visit_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
     CONSTRAINT fk_visit_user FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_visit_patient_date (patient_id, visited_at)
+    CONSTRAINT fk_visit_courier_user FOREIGN KEY (courier_dispatched_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_visit_patient_date (patient_id, visited_at),
+    INDEX idx_visit_visited_at (visited_at),
+    INDEX idx_visit_recorded_by (recorded_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS visit_medicines (
@@ -110,6 +144,7 @@ CREATE TABLE IF NOT EXISTS visit_medicines (
     quantity INT UNSIGNED NOT NULL,
     unit_price DECIMAL(10, 2) NOT NULL,
     line_total DECIMAL(10, 2) NOT NULL,
+    courier_quantity INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (visit_id, medicine_id),
     CONSTRAINT fk_vm_visit FOREIGN KEY (visit_id) REFERENCES visits(id) ON DELETE CASCADE,
     CONSTRAINT fk_vm_medicine FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT,
@@ -133,4 +168,6 @@ INSERT IGNORE INTO clinic_settings (setting_key, setting_value) VALUES
     ('gst.registration_percent', '5.00'),
     ('gst.visit_charge_percent', '5.00'),
     ('gst.medicine_percent', '5.00'),
-    ('visit.default_charge', '0.00');
+    ('visit.default_charge', '0.00'),
+    ('courier.default_charge', '0.00'),
+    ('gst.courier_percent', '5.00');

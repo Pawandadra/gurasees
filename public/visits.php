@@ -29,13 +29,19 @@ try {
 }
 
 try {
-    $listResult = Visit::listFiltered(
-        $listFilters,
-        $sortParams['sort'],
-        $sortParams['dir'],
+    $paginated = list_paginate(
+        static fn (int $p): array => Visit::listFiltered(
+            $listFilters,
+            $sortParams['sort'],
+            $sortParams['dir'],
+            $p,
+            $perPage
+        ),
         $listFilters['page'],
         $perPage
     );
+    $listResult = $paginated['result'];
+    $listFilters['page'] = $paginated['page'];
     $visitRows = $listResult['rows'];
     $totalVisits = $listResult['total'];
     $todayVisits = Visit::countToday();
@@ -48,8 +54,7 @@ try {
 }
 
 $totalPages = max(1, (int) ceil($totalVisits / $perPage));
-$page = min($listFilters['page'], $totalPages);
-$listFilters['page'] = $page;
+$page = $listFilters['page'];
 
 view('visits/index', array_merge(
     compact(

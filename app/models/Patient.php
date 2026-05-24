@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 require_once APP_PATH . '/models/Symptom.php';
 require_once APP_PATH . '/models/PaymentSettings.php';
+require_once APP_PATH . '/models/Visit.php';
 
 final class Patient
 {
     /**
-     * @return array{ok: true, patient_code: string}|array{ok: false, errors: array<string, string>}
+     * @return array{ok: true, patient_code: string}|array{ok: false, errors: array<string, string>, existing_patient_code?: string}
      */
     public static function register(array $raw): array
     {
@@ -22,16 +23,25 @@ final class Patient
             return ['ok' => false, 'errors' => $errors];
         }
 
+        $existing = self::findDuplicateByNameAndPhone($data);
+        if ($existing !== null) {
+            return [
+                'ok' => false,
+                'errors' => ['_duplicate' => __('patient.register.duplicate')],
+                'existing_patient_code' => $existing['patient_code'],
+            ];
+        }
+
         $pdo = db();
         $pdo->beginTransaction();
 
         try {
             $stmt = $pdo->prepare(
                 'INSERT INTO patients (
-                    name, age, gender, phone, address, delivery_address,
+                    name, age, gender, phone, address, delivery_address, remarks,
                     payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount
                  ) VALUES (
-                    :name, :age, :gender, :phone, :address, :delivery_address,
+                    :name, :age, :gender, :phone, :address, :delivery_address, :remarks,
                     :payment_amount, :payment_gst_amount, :payment_method, :payment_status, :payment_paid_amount
                  )'
             );
@@ -42,6 +52,7 @@ final class Patient
                 'phone' => $data['phone'],
                 'address' => $data['address'],
                 'delivery_address' => $data['delivery_address'] !== '' ? $data['delivery_address'] : null,
+                'remarks' => $data['remarks'] !== '' ? $data['remarks'] : null,
                 'payment_amount' => $payment['payment_amount'] ?? 0,
                 'payment_gst_amount' => $payment['payment_gst_amount'] ?? 0,
                 'payment_method' => $payment['payment_method'] ?? null,
@@ -126,6 +137,25 @@ final class Patient
         $stmt->execute();
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Most recently registered patient (single row).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function lastRegistered(): array
+    {
+        $stmt = db()->query(
+            'SELECT ' . self::LIST_SELECT_SQL . self::LIST_FROM_SQL . '
+             WHERE p.patient_code IS NOT NULL
+             ORDER BY p.created_at DESC, p.id DESC
+             LIMIT 1'
+        );
+
+        $row = $stmt->fetch();
+
+        return $row !== false ? [$row] : [];
     }
 
     /**
@@ -220,6 +250,26 @@ final class Patient
         };
     }
 
+    public static function genderToLetter(string $gender): string
+    {
+        return match ($gender) {
+            'male' => 'M',
+            'female' => 'F',
+            'other' => 'O',
+            default => strtoupper(substr(trim($gender), 0, 1)),
+        };
+    }
+
+    public static function normalizeGenderInput(string $input): ?string
+    {
+        return match (strtoupper(trim($input))) {
+            'M' => 'male',
+            'F' => 'female',
+            'O' => 'other',
+            default => null,
+        };
+    }
+
     public static function formatRegisteredAt(string $datetime): string
     {
         $dt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $datetime);
@@ -258,7 +308,7 @@ final class Patient
         }
 
         $stmt = db()->prepare(
-            'SELECT id, patient_code, name, age, gender, phone, address, delivery_address,
+            'SELECT id, patient_code, name, age, gender, phone, address, delivery_address, remarks,
                     payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount, created_at
              FROM patients
              WHERE patient_code = :code
@@ -326,11 +376,12 @@ final class Patient
         return [
             'name' => (string) $patient['name'],
             'age' => (string) $patient['age'],
-            'gender' => (string) $patient['gender'],
+            'gender' => self::genderToLetter((string) $patient['gender']),
             'phone_iso' => $parsed['iso'],
             'phone_local' => $parsed['local'],
             'address' => (string) $patient['address'],
             'delivery_address' => (string) ($patient['delivery_address'] ?? ''),
+            'remarks' => (string) ($patient['remarks'] ?? ''),
             'delivery_same_as_address' => self::deliveryMatchesPrimary(
                 (string) $patient['address'],
                 isset($patient['delivery_address']) ? (string) $patient['delivery_address'] : null
@@ -370,14 +421,20 @@ final class Patient
         );
         $data['delivery_same_as_address'] = !empty($raw['delivery_same_as_address']) ? '1' : '';
 
-        if (PaymentSettings::isEnabled()) {
-            $data = array_merge($data, [
-                'payment_amount' => (string) ($raw['payment_amount'] ?? PaymentSettings::formatAmount(PaymentSettings::defaultAmount())),
-                'payment_method' => (string) ($raw['payment_method'] ?? PaymentSettings::defaultMethod()),
-                'payment_status' => (string) ($raw['payment_status'] ?? PaymentSettings::defaultStatus()),
-                'payment_paid_amount' => (string) ($raw['payment_paid_amount'] ?? ''),
-            ]);
-        }
+        $rawGender = strtoupper(trim((string) ($raw['gender'] ?? '')));
+        $data['gender'] = $rawGender !== ''
+            ? substr($rawGender, 0, 1)
+            : self::genderToLetter($data['gender']);
+
+        $defaultAmount = PaymentSettings::defaultAmount();
+        $data = array_merge($data, [
+            'payment_amount' => (string) ($raw['payment_amount'] ?? ($defaultAmount > 0
+                ? PaymentSettings::formatAmount($defaultAmount)
+                : '')),
+            'payment_method' => (string) ($raw['payment_method'] ?? PaymentSettings::defaultMethod()),
+            'payment_status' => (string) ($raw['payment_status'] ?? PaymentSettings::defaultStatus()),
+            'payment_paid_amount' => (string) ($raw['payment_paid_amount'] ?? ''),
+        ]);
 
         return $data;
     }
@@ -385,20 +442,19 @@ final class Patient
     public static function formatPaymentSummary(array $patient): ?string
     {
         $amount = (float) ($patient['payment_amount'] ?? 0);
-        if ($amount <= 0) {
-            return null;
-        }
-
         $gst = (float) ($patient['payment_gst_amount'] ?? 0);
         $total = PaymentSettings::registrationTotal($amount, $gst);
+        if ($total <= 0) {
+            return null;
+        }
         $status = (string) ($patient['payment_status'] ?? '');
         $method = (string) ($patient['payment_method'] ?? '');
         $paid = (float) ($patient['payment_paid_amount'] ?? 0);
 
         $parts = [
-            PaymentSettings::formatAmount($amount),
-            __('payment.summary.gst', ['amount' => PaymentSettings::formatAmount($gst)]),
             __('payment.summary.total', ['amount' => PaymentSettings::formatAmount($total)]),
+            __('payment.summary.gst', ['amount' => PaymentSettings::formatAmount($gst)]),
+            __('payment.summary.without_gst', ['amount' => PaymentSettings::formatAmount($amount)]),
         ];
         if ($method !== '') {
             $parts[] = PaymentSettings::methodLabel($method);
@@ -414,6 +470,45 @@ final class Patient
         }
 
         return implode(' · ', $parts);
+    }
+
+    /**
+     * Registration fee still owed (pending or partial).
+     *
+     * @param array<string, mixed> $patient
+     */
+    public static function registrationBalance(array $patient): float
+    {
+        $total = PaymentSettings::registrationTotal(
+            (float) ($patient['payment_amount'] ?? 0),
+            (float) ($patient['payment_gst_amount'] ?? 0)
+        );
+        if ($total <= 0) {
+            return 0.0;
+        }
+
+        return Visit::paymentBalance([
+            'grand_total' => $total,
+            'payment_status' => (string) ($patient['payment_status'] ?? ''),
+            'payment_paid_amount' => (float) ($patient['payment_paid_amount'] ?? 0),
+        ]);
+    }
+
+    /**
+     * Total amount still to collect: registration balance + unpaid visit balances.
+     *
+     * @param array<string, mixed> $patient
+     * @param list<array<string, mixed>> $visits
+     */
+    public static function totalOutstandingBalance(array $patient, array $visits = []): float
+    {
+        $total = self::registrationBalance($patient);
+
+        foreach ($visits as $visit) {
+            $total += Visit::paymentBalance($visit);
+        }
+
+        return round($total, 2);
     }
 
     public static function deliveryMatchesPrimary(string $address, ?string $delivery): bool
@@ -443,6 +538,67 @@ final class Patient
     }
 
     /**
+     * @param array<string, mixed> $patient
+     * @param array{name: string, age: int, gender: string, phone: string, address: string, delivery_address: string, remarks: string} $data
+     * @param array<string, mixed> $raw
+     */
+    private static function profileWouldChange(array $patient, int $patientId, array $data, array $raw): bool
+    {
+        $newDelivery = $data['delivery_address'] !== '' ? $data['delivery_address'] : null;
+        $newRemarks = $data['remarks'] !== '' ? $data['remarks'] : null;
+
+        if ($data['name'] !== (string) $patient['name']
+            || $data['age'] !== (int) $patient['age']
+            || $data['gender'] !== (string) $patient['gender']
+            || $data['phone'] !== (string) $patient['phone']
+            || $data['address'] !== (string) $patient['address']
+            || self::nullableText($patient['delivery_address'] ?? null) !== self::nullableText($newDelivery)
+            || self::nullableText($patient['remarks'] ?? null) !== self::nullableText($newRemarks)
+        ) {
+            return true;
+        }
+
+        $newActive = Symptom::filterActiveIds(self::parseSymptomIds($raw));
+        $preservedInactive = Symptom::inactiveIdsForPatient($patientId);
+        $newSymptomIds = array_values(array_unique(array_merge($newActive, $preservedInactive)));
+        sort($newSymptomIds);
+
+        $oldSymptomIds = self::symptomIdsForPatient($patientId);
+        sort($oldSymptomIds);
+
+        return $newSymptomIds !== $oldSymptomIds;
+    }
+
+    private static function nullableText(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? null : $text;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function symptomIdsForPatient(int $patientId): array
+    {
+        if ($patientId < 1) {
+            return [];
+        }
+
+        $stmt = db()->prepare(
+            'SELECT symptom_id FROM patient_symptoms WHERE patient_id = :pid ORDER BY symptom_id ASC'
+        );
+        $stmt->execute(['pid' => $patientId]);
+
+        $ids = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) {
+            $ids[] = (int) $id;
+        }
+
+        return $ids;
+    }
+
+    /**
      * @param list<int> $symptomIds
      */
     private static function syncSymptoms(int $patientId, array $symptomIds): void
@@ -460,11 +616,13 @@ final class Patient
         }
 
         $valueParts = [];
-        $params = ['pid' => $patientId];
+        $params = [];
         foreach ($finalIds as $index => $sid) {
-            $key = 'sid' . $index;
-            $valueParts[] = '(:pid, :' . $key . ')';
-            $params[$key] = $sid;
+            $pidKey = 'pid' . $index;
+            $sidKey = 'sid' . $index;
+            $valueParts[] = '(:' . $pidKey . ', :' . $sidKey . ')';
+            $params[$pidKey] = $patientId;
+            $params[$sidKey] = $sid;
         }
         $ins = $pdo->prepare(
             'INSERT INTO patient_symptoms (patient_id, symptom_id) VALUES ' . implode(', ', $valueParts)
@@ -475,7 +633,7 @@ final class Patient
     /**
      * @return array{ok: true}|array{ok: false, errors: array<string, string>}
      */
-    public static function update(string $code, array $raw): array
+    public static function update(string $code, array $raw, ?int $editedBy = null): array
     {
         $patient = self::findByCode($code);
         if ($patient === null) {
@@ -488,15 +646,33 @@ final class Patient
             return ['ok' => false, 'errors' => $errors];
         }
 
+        $duplicate = self::findDuplicateByNameAndPhone($data, $code);
+        if ($duplicate !== null) {
+            return [
+                'ok' => false,
+                'errors' => ['_duplicate' => __('patient.register.duplicate')],
+                'existing_patient_code' => $duplicate['patient_code'],
+            ];
+        }
+
         $patientId = (int) $patient['id'];
         $pdo = db();
         $pdo->beginTransaction();
 
         try {
+            if (self::profileWouldChange($patient, $patientId, $data, $raw)) {
+                load_model('PatientProfileHistory');
+                PatientProfileHistory::record(
+                    $patientId,
+                    $editedBy,
+                    PatientProfileHistory::buildSnapshot($patient, $patientId)
+                );
+            }
+
             $stmt = $pdo->prepare(
                 'UPDATE patients
                  SET name = :name, age = :age, gender = :gender, phone = :phone,
-                     address = :address, delivery_address = :delivery_address
+                     address = :address, delivery_address = :delivery_address, remarks = :remarks
                  WHERE patient_code = :code'
             );
             $stmt->execute([
@@ -506,6 +682,7 @@ final class Patient
                 'phone' => $data['phone'],
                 'address' => $data['address'],
                 'delivery_address' => $data['delivery_address'] !== '' ? $data['delivery_address'] : null,
+                'remarks' => $data['remarks'] !== '' ? $data['remarks'] : null,
                 'code' => $code,
             ]);
 
@@ -521,21 +698,58 @@ final class Patient
         }
     }
 
-    public static function delete(string $code): bool
+    public const DELETE_OK = 'ok';
+    public const DELETE_NOT_FOUND = 'not_found';
+    public const DELETE_ERROR = 'error';
+
+    /**
+     * @return self::DELETE_OK|self::DELETE_NOT_FOUND|self::DELETE_ERROR
+     */
+    public static function delete(string $code): string
     {
         if (!self::isValidCode($code)) {
-            return false;
+            return self::DELETE_NOT_FOUND;
         }
 
-        $stmt = db()->prepare('DELETE FROM patients WHERE patient_code = :code LIMIT 1');
-        $stmt->execute(['code' => $code]);
+        $patient = self::findByCode($code);
+        if ($patient === null) {
+            return self::DELETE_NOT_FOUND;
+        }
 
-        return $stmt->rowCount() > 0;
+        load_model('Medicine');
+        $pdo = db();
+        $pdo->beginTransaction();
+
+        try {
+            $visitStmt = $pdo->prepare('SELECT id FROM visits WHERE patient_id = :patient_id');
+            $visitStmt->execute(['patient_id' => (int) $patient['id']]);
+            foreach ($visitStmt->fetchAll(PDO::FETCH_COLUMN) as $visitId) {
+                Medicine::restoreVisitStock((int) $visitId);
+            }
+
+            $stmt = $pdo->prepare('DELETE FROM patients WHERE patient_code = :code LIMIT 1');
+            $stmt->execute(['code' => $code]);
+            if ($stmt->rowCount() < 1) {
+                $pdo->rollBack();
+
+                return self::DELETE_NOT_FOUND;
+            }
+
+            $pdo->commit();
+
+            return self::DELETE_OK;
+        } catch (Throwable) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            return self::DELETE_ERROR;
+        }
     }
 
     /**
      * @param array<string, mixed> $raw
-     * @return array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string}
+     * @return array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string, remarks: string}
      */
     public static function sanitize(array $raw): array
     {
@@ -552,48 +766,94 @@ final class Patient
             ? $address
             : input_string($raw['delivery_address'] ?? '', 500);
 
+        $gender = self::normalizeGenderInput((string) ($raw['gender'] ?? '')) ?? '';
+
         return [
             'name' => input_string($raw['name'] ?? '', 120),
             'age' => (int) filter_var($raw['age'] ?? '', FILTER_VALIDATE_INT),
-            'gender' => input_string($raw['gender'] ?? '', 10),
+            'gender' => $gender,
             'phone_iso' => $iso,
             'phone_local' => $local,
             'phone' => phone_build($iso, $local),
             'address' => $address,
             'delivery_address' => $deliveryAddress,
+            'remarks' => input_string($raw['remarks'] ?? '', 1000),
         ];
     }
 
     /**
-     * @param array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string} $data
+     * @param array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string, remarks: string} $data
      * @return array<string, string>
      */
     public static function validate(array $data): array
     {
         $errors = [];
+        $required = __('validation.required');
 
         if (mb_strlen($data['name']) < 2) {
-            $errors['name'] = __('patient.error.name');
+            $errors['name'] = $required;
         }
 
         if ($data['age'] < 1 || $data['age'] > 120) {
-            $errors['age'] = __('patient.error.age');
+            $errors['age'] = $required;
         }
 
         if (!in_array($data['gender'], ['male', 'female', 'other'], true)) {
-            $errors['gender'] = __('patient.error.gender');
+            $errors['gender'] = $required;
         }
 
         if (!phone_validate_local($data['phone_iso'], $data['phone_local'])) {
-            $errors['phone'] = $data['phone_iso'] === 'IN'
-                ? __('patient.error.phone_in')
-                : __('patient.error.phone');
+            $errors['phone'] = $required;
         }
 
         if (mb_strlen($data['address']) < 5) {
-            $errors['address'] = __('patient.error.address');
+            $errors['address'] = $required;
         }
 
         return $errors;
+    }
+
+    /**
+     * @param array{name: string, phone: string} $data
+     * @return array{patient_code: string}|null
+     */
+    public static function findDuplicateByNameAndPhone(array $data, ?string $excludeCode = null): ?array
+    {
+        if ($data['name'] === '' || $data['phone'] === '') {
+            return null;
+        }
+
+        $excludeCode = $excludeCode !== null ? strtoupper(trim($excludeCode)) : null;
+
+        $stmt = db()->prepare(
+            'SELECT patient_code, name
+             FROM patients
+             WHERE phone = :phone AND patient_code IS NOT NULL'
+        );
+        $stmt->execute(['phone' => $data['phone']]);
+
+        $needle = self::normalizeNameForCompare($data['name']);
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $patientCode = (string) $row['patient_code'];
+            if ($excludeCode !== null && $patientCode === $excludeCode) {
+                continue;
+            }
+            if (self::normalizeNameForCompare((string) $row['name']) === $needle) {
+                return ['patient_code' => $patientCode];
+            }
+        }
+
+        return null;
+    }
+
+    public static function normalizeNameForCompare(string $name): string
+    {
+        $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+
+        return mb_strtolower($name, 'UTF-8');
     }
 }

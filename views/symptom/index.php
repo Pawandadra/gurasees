@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /** @var array<string, string> $errors */
-/** @var list<array{id: int, label: string}> $symptoms */
+/** @var list<array{id: int, label: string, in_use: bool}> $symptoms */
 /** @var string|null $successMessage */
 /** @var string|null $errorMessage */
 /** @var bool $dbError */
@@ -34,7 +34,7 @@ ob_start();
         <form method="post" action="<?= e(base_url('/symptoms.php')) ?>" class="symptom-add-form">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="add">
-            <div class="row g-2 align-items-start">
+            <div class="row g-2 align-items-end symptom-add-fields">
                 <div class="col-md-8 col-lg-6">
                     <label for="symptom_label" class="form-label"><?= e(__('symptom.field.label')) ?></label>
                     <input type="text" class="form-control<?= field_invalid($errors, 'label') ?>"
@@ -43,8 +43,8 @@ ob_start();
                            value="<?= e((string) ($_POST['label'] ?? '')) ?>">
                     <?php show_field_error($errors, 'label'); ?>
                 </div>
-                <div class="col-md-4 col-lg-auto d-flex align-items-end">
-                    <button type="submit" class="btn btn-reception-primary"><?= e(__('symptom.add.submit')) ?></button>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-reception-primary text-nowrap"><?= e(__('symptom.add.submit')) ?></button>
                 </div>
             </div>
         </form>
@@ -56,27 +56,31 @@ ob_start();
         <?php if ($symptoms === []): ?>
             <p class="text-muted mb-0"><?= e(__('symptom.list.empty')) ?></p>
         <?php else: ?>
-            <p class="text-muted small mb-3"><?= e(__('symptom.list.preview_hint')) ?></p>
-            <div class="symptoms-checkbox-row symptoms-preview-row mb-4" aria-hidden="true">
-                <?php foreach ($symptoms as $symptom): ?>
-                    <span class="symptom-tag"><?= e($symptom['label']) ?></span>
-                <?php endforeach; ?>
-            </div>
-
             <ul class="symptom-manage-list list-unstyled mb-0">
                 <?php foreach ($symptoms as $symptom): ?>
                     <li class="symptom-manage-item">
                         <span class="symptom-manage-label"><?= e($symptom['label']) ?></span>
-                        <form method="post" action="<?= e(base_url('/symptoms.php')) ?>" class="symptom-remove-form">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="action" value="remove">
-                            <input type="hidden" name="id" value="<?= (int) $symptom['id'] ?>">
-                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                    title="<?= e(__('symptom.delete.submit')) ?>"
-                                    aria-label="<?= e(__('symptom.delete.submit') . ': ' . $symptom['label']) ?>">
-                                <?= e(__('symptom.delete.submit')) ?>
-                            </button>
-                        </form>
+                        <?php if (!empty($symptom['in_use'])): ?>
+                            <span class="symptom-in-use-hint text-muted small"
+                                  title="<?= e(__('symptom.delete.in_use_hint')) ?>">
+                                <?= e(__('symptom.delete.in_use_hint')) ?>
+                            </span>
+                        <?php else: ?>
+                            <form method="post" action="<?= e(base_url('/symptoms.php')) ?>" class="symptom-remove-form patient-action-delete-form">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="remove">
+                                <input type="hidden" name="id" value="<?= (int) $symptom['id'] ?>">
+                                <button type="button"
+                                        class="patient-action-btn patient-action-delete confirm-action-trigger"
+                                        data-confirm-title="<?= e(__('symptom.delete.confirm_title')) ?>"
+                                        data-confirm="<?= e(__('symptom.delete.confirm', ['label' => $symptom['label']])) ?>"
+                                        data-confirm-label="<?= e(__('symptom.action.remove')) ?>"
+                                        title="<?= e(__('symptom.action.remove')) ?>"
+                                        aria-label="<?= e(__('symptom.action.remove') . ': ' . $symptom['label']) ?>">
+                                    <?php require BASE_PATH . '/views/partials/icons/delete.php'; ?>
+                                </button>
+                            </form>
+                        <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
             </ul>

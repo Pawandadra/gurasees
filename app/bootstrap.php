@@ -39,7 +39,11 @@ $appConfig = require APP_PATH . '/config/app.php';
 if (!$appConfig['debug']) {
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
+    ini_set('html_errors', '0');
+    ini_set('expose_php', '0');
     error_reporting(E_ALL);
+    require APP_PATH . '/helpers/errors.php';
+    bootstrap_production_errors();
 } else {
     ini_set('display_errors', '1');
     error_reporting(E_ALL);
@@ -48,6 +52,11 @@ if (!$appConfig['debug']) {
 require APP_PATH . '/helpers/functions.php';
 require APP_PATH . '/helpers/form.php';
 require APP_PATH . '/helpers/visits_list.php';
+require APP_PATH . '/helpers/medicines_list.php';
+require APP_PATH . '/helpers/courier_list.php';
+require APP_PATH . '/helpers/payment_list.php';
+require APP_PATH . '/helpers/reports.php';
+require APP_PATH . '/helpers/responsive.php';
 require APP_PATH . '/helpers/phone.php';
 require APP_PATH . '/helpers/security.php';
 require APP_PATH . '/helpers/lang.php';
@@ -62,5 +71,5 @@ session_bootstrap($appConfig);
 // Security headers (sent before any output).
 security_send_headers();
 
-// Load translations for the active locale.
+// Load English UI strings.
 lang_init($appConfig);

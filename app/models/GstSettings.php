@@ -42,6 +42,24 @@ final class GstSettings
         return round($base * $percent / 100, 2);
     }
 
+    /**
+     * Split an inclusive (net) total into amount without GST and GST portion.
+     *
+     * @return array{base: float, gst: float, total: float}
+     */
+    public static function splitInclusiveTotal(float $inclusiveTotal, float $percent): array
+    {
+        $total = max(0.0, round($inclusiveTotal, 2));
+        if ($total <= 0 || $percent <= 0) {
+            return ['base' => $total, 'gst' => 0.0, 'total' => $total];
+        }
+
+        $base = round($total / (1 + $percent / 100), 2);
+        $gst = round($total - $base, 2);
+
+        return ['base' => $base, 'gst' => $gst, 'total' => $total];
+    }
+
     public static function formatPercent(float $percent): string
     {
         return number_format($percent, 2, '.', '');

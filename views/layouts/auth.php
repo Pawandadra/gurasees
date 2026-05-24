@@ -1,11 +1,9 @@
 <?php
 
 declare(strict_types=1);
-
-$locale = locale();
 ?>
 <!DOCTYPE html>
-<html lang="<?= $locale === 'pa' ? 'pa' : 'en' ?>">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,17 +15,11 @@ $locale = locale();
     <link href="<?= e(base_url('assets/css/app.css')) ?>" rel="stylesheet">
 </head>
 <body class="auth-body">
-<div class="auth-lang position-absolute top-0 end-0 p-3">
-    <div class="btn-group btn-group-sm">
-        <a href="<?= e(lang_url('en')) ?>" class="btn btn-outline-secondary btn-sm"><?= e(__('lang.english')) ?></a>
-        <a href="<?= e(lang_url('pa')) ?>" class="btn btn-outline-secondary btn-sm"><?= e(__('lang.punjabi')) ?></a>
-    </div>
-</div>
-
 <main class="auth-main">
     <?= $content ?? '' ?>
 </main>
 
+<script src="<?= e(base_url('assets/js/dropdown-dismiss.js')) ?>" defer></script>
 <script src="<?= e(base_url('assets/js/login.js')) ?>" defer></script>
 </body>
 </html>

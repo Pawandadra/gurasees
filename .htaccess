@@ -1,5 +1,9 @@
-# Point Apache document root to /public when project root is the vhost root
+# If the vhost document root is the project root (not public/), route into public/
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Block direct HTTP access to application internals
+    RewriteRule ^(app|sql|scripts|storage|views)(/|$) - [F,L]
+
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

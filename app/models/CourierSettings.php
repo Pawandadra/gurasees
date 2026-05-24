@@ -3,25 +3,57 @@
 declare(strict_types=1);
 
 require_once APP_PATH . '/models/ClinicSettings.php';
-require_once APP_PATH . '/models/GstSettings.php';
 
 final class CourierSettings
 {
-    private const KEY_DEFAULT_CHARGE = 'courier.default_charge';
+    private const KEY_SENDER_NAME = 'courier.sender_name';
+    private const KEY_SENDER_PHONE = 'courier.sender_phone';
+    private const KEY_SENDER_ADDRESS = 'courier.sender_address';
 
-    public static function defaultCharge(): float
+    /**
+     * @return array{name: string, phone: string, address: string}
+     */
+    public static function sender(): array
     {
-        $raw = ClinicSettings::get(self::KEY_DEFAULT_CHARGE, '0');
-        if (!is_numeric($raw)) {
-            return 0.0;
-        }
-
-        return max(0.0, round((float) $raw, 2));
+        return [
+            'name' => self::senderName(),
+            'phone' => self::senderPhone(),
+            'address' => self::senderAddress(),
+        ];
     }
 
-    public static function formatCharge(float $amount): string
+    public static function senderName(): string
     {
-        return number_format($amount, 2, '.', '');
+        $name = trim(ClinicSettings::get(self::KEY_SENDER_NAME, ''));
+
+        return $name !== '' ? $name : __('app.name');
+    }
+
+    public static function senderPhone(): string
+    {
+        return trim(ClinicSettings::get(self::KEY_SENDER_PHONE, ''));
+    }
+
+    public static function senderAddress(): string
+    {
+        return trim(ClinicSettings::get(self::KEY_SENDER_ADDRESS, ''));
+    }
+
+    public static function formatLabelDate(): string
+    {
+        return (new DateTimeImmutable('now'))->format('d M Y');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function formDefaults(): array
+    {
+        return [
+            'courier_sender_name' => trim(ClinicSettings::get(self::KEY_SENDER_NAME, '')),
+            'courier_sender_phone' => self::senderPhone(),
+            'courier_sender_address' => self::senderAddress(),
+        ];
     }
 
     /**
@@ -39,35 +71,17 @@ final class CourierSettings
     }
 
     /**
-     * @return array{charge: float, gst: float}
-     */
-    public static function billingForLines(array $lines): array
-    {
-        if (!self::appliesToLines($lines)) {
-            return ['charge' => 0.0, 'gst' => 0.0];
-        }
-
-        $charge = self::defaultCharge();
-        $gst = GstSettings::amountOnBase($charge, GstSettings::courierPercent());
-
-        return ['charge' => $charge, 'gst' => $gst];
-    }
-
-    /**
      * @return array{ok: true}|array{ok: false, errors: array<string, string>}
      */
     public static function save(array $raw): array
     {
-        $amountRaw = trim((string) ($raw['courier_default_charge'] ?? '0'));
-        if ($amountRaw === '') {
-            $amountRaw = '0';
-        }
-        if (!is_numeric($amountRaw)) {
-            return ['ok' => false, 'errors' => ['courier_default_charge' => __('courier.error.charge')]];
-        }
+        $name = mb_substr(trim((string) ($raw['courier_sender_name'] ?? '')), 0, 120);
+        $phone = mb_substr(trim((string) ($raw['courier_sender_phone'] ?? '')), 0, 30);
+        $address = mb_substr(trim((string) ($raw['courier_sender_address'] ?? '')), 0, 500);
 
-        $amount = max(0.0, round((float) $amountRaw, 2));
-        ClinicSettings::set(self::KEY_DEFAULT_CHARGE, self::formatCharge($amount));
+        ClinicSettings::set(self::KEY_SENDER_NAME, $name);
+        ClinicSettings::set(self::KEY_SENDER_PHONE, $phone);
+        ClinicSettings::set(self::KEY_SENDER_ADDRESS, $address);
 
         return ['ok' => true];
     }

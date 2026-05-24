@@ -1,10 +1,17 @@
 .env
+.env.*
+!.env.example
 /vendor/
 /node_modules/
 *.log
+*.swp
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
 storage/cache/*
 !storage/cache/.gitkeep
+storage/cache/login/*
+!storage/cache/login/.gitkeep
 storage/logs/*
 !storage/logs/.gitkeep

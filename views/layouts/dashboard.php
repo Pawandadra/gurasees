@@ -6,14 +6,13 @@ declare(strict_types=1);
 /** @var string|null $activeNav */
 
 $pageTitle = $pageTitle ?? __('nav.dashboard');
-$locale = locale();
 $user = auth_user();
 $role = $user['role'] ?? '';
 $roleLabel = auth_role_label($role);
 $activeNav = $activeNav ?? nav_active_id();
 ?>
 <!DOCTYPE html>
-<html lang="<?= $locale === 'pa' ? 'pa' : 'en' ?>">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,12 +41,6 @@ $activeNav = $activeNav ?? nav_active_id();
             <?php require BASE_PATH . '/views/partials/header_patient_search.php'; ?>
             <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
                 <span class="text-white-50 small d-none d-md-inline"><?= e($user['name'] ?? '') ?></span>
-                <div class="btn-group btn-group-sm reception-lang" role="group" aria-label="<?= e(__('lang.label')) ?>">
-                    <a href="<?= e(lang_url('en')) ?>"
-                       class="btn btn-sm<?= $locale === 'en' ? ' btn-light' : ' btn-outline-light' ?>"><?= e(__('lang.english')) ?></a>
-                    <a href="<?= e(lang_url('pa')) ?>"
-                       class="btn btn-sm<?= $locale === 'pa' ? ' btn-light' : ' btn-outline-light' ?>"><?= e(__('lang.punjabi')) ?></a>
-                </div>
                 <form method="post" action="<?= e(base_url('/logout.php')) ?>" class="d-inline">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-sm btn-outline-light"><?= e(__('nav.logout')) ?></button>
@@ -66,13 +59,15 @@ $activeNav = $activeNav ?? nav_active_id();
     </main>
 </div>
 
-<?php require BASE_PATH . '/views/partials/patient_delete_modal.php'; ?>
+<?php require BASE_PATH . '/views/partials/confirm_action_modal.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
 <script src="<?= e(base_url('assets/js/sidebar.js')) ?>" defer></script>
-<script src="<?= e(base_url('assets/js/patient-delete.js')) ?>"></script>
+<script src="<?= e(base_url('assets/js/dropdown-dismiss.js')) ?>" defer></script>
+<script src="<?= e(base_url('assets/js/confirm-action.js')) ?>"></script>
+<script src="<?= e(base_url('assets/js/flash-auto-dismiss.js')) ?>" defer></script>
 <script src="<?= e(base_url('assets/js/patient-search.js')) ?>" defer></script>
 <?php foreach ($pageScripts ?? [] as $script): ?>
 <script src="<?= e(base_url($script)) ?>" defer></script>

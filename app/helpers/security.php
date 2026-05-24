@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+/** Minimum session and CSRF lifetime (2 hours). */
+function session_lifetime_seconds(array $appConfig): int
+{
+    return max(7200, (int) ($appConfig['session_lifetime'] ?? 7200));
+}
+
 /**
  * Secure session initialization.
  *
@@ -13,15 +19,16 @@ function session_bootstrap(array $appConfig): void
         return;
     }
 
-    $lifetime = (int) ($appConfig['session_lifetime'] ?? 7200);
+    $lifetime = session_lifetime_seconds($appConfig);
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
 
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
-    ini_set('session.cookie_samesite', 'Strict');
+    ini_set('session.cookie_samesite', 'Lax');
     ini_set('session.gc_maxlifetime', (string) $lifetime);
+    ini_set('session.cookie_lifetime', (string) $lifetime);
 
     if ($isHttps) {
         ini_set('session.cookie_secure', '1');
@@ -29,21 +36,24 @@ function session_bootstrap(array $appConfig): void
 
     session_name('GAA_SESSID');
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => $lifetime,
         'path' => '/',
         'secure' => $isHttps,
         'httponly' => true,
-        'samesite' => 'Strict',
+        'samesite' => 'Lax',
     ]);
 
     session_start();
 
-    if (!isset($_SESSION['_created'])) {
+    $_SESSION['_session_lifetime'] = $lifetime;
+
+    if (!isset($_SESSION['_session_started'])) {
         session_regenerate_id(true);
-        $_SESSION['_created'] = time();
-    } elseif (time() - (int) $_SESSION['_created'] > 300) {
-        session_regenerate_id(true);
-        $_SESSION['_created'] = time();
+        $_SESSION['_session_started'] = time();
+    } elseif (time() - (int) $_SESSION['_session_started'] >= $lifetime) {
+        // Full session rotation after lifetime; keep old session until the new one is saved.
+        session_regenerate_id(false);
+        $_SESSION['_session_started'] = time();
     }
 }
 
@@ -70,6 +80,49 @@ function security_send_headers(): void
         . "base-uri 'self'; "
         . "form-action 'self'"
     );
+
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+    if ($isHttps && (string) config('env') !== 'local') {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
+}
+
+/**
+ * Allow only safe in-app return paths (path + query, no scheme/host).
+ *
+ * @param list<string> $allowedPaths Exact paths such as "/payments.php"
+ */
+function safe_return_path(string $return, array $allowedPaths): ?string
+{
+    $return = trim($return);
+    if ($return === '' || !str_starts_with($return, '/') || str_contains($return, '://')) {
+        return null;
+    }
+
+    $path = parse_url($return, PHP_URL_PATH);
+    if (!is_string($path) || $path === '' || str_contains($path, '..')) {
+        return null;
+    }
+
+    if (!in_array($path, $allowedPaths, true)) {
+        return null;
+    }
+
+    return $return;
+}
+
+/**
+ * Issue a new CSRF token for the current session.
+ */
+function csrf_rotate(): string
+{
+    $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['_csrf_issued'] = time();
+
+    return $_SESSION['_csrf_token'];
 }
 
 /**
@@ -77,8 +130,15 @@ function security_send_headers(): void
  */
 function csrf_token(): string
 {
-    if (empty($_SESSION['_csrf_token'])) {
-        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    $lifetime = max(7200, (int) ($_SESSION['_session_lifetime'] ?? 7200));
+    $issued = (int) ($_SESSION['_csrf_issued'] ?? 0);
+
+    if (
+        empty($_SESSION['_csrf_token'])
+        || $issued === 0
+        || time() - $issued > $lifetime
+    ) {
+        return csrf_rotate();
     }
 
     return $_SESSION['_csrf_token'];
@@ -115,6 +175,24 @@ function csrf_require(): void
         http_response_code(403);
         exit(__('error.csrf'));
     }
+}
+
+/**
+ * Handle invalid CSRF on a form page: rotate token and return false (caller re-renders the form).
+ */
+function csrf_require_form(): bool
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return true;
+    }
+
+    if (csrf_verify()) {
+        return true;
+    }
+
+    csrf_rotate();
+
+    return false;
 }
 
 /**

@@ -11,7 +11,9 @@ function load_model(string $name): void
 
     $file = APP_PATH . '/models/' . $name . '.php';
     if (!is_readable($file)) {
-        throw new RuntimeException('Model not found: ' . $name);
+        throw new RuntimeException(
+            (bool) config('debug') ? 'Model not found: ' . $name : 'Application error.'
+        );
     }
 
     require_once $file;

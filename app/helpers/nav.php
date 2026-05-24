@@ -51,8 +51,8 @@ function nav_items(string $role): array
             'roles' => ['manager', 'admin'],
         ],
         [
-            'id' => 'payment_settings',
-            'url' => '/payment_settings.php',
+            'id' => 'payments',
+            'url' => '/payments.php',
             'label' => __('nav.payment_settings'),
             'icon' => 'payment',
             'roles' => ['manager', 'admin'],
@@ -86,10 +86,10 @@ function nav_active_id(): string
     return match ($script) {
         'patients' => 'patients',
         'visits' => 'visits',
-        'courier' => 'courier',
+        'courier', 'courier_view', 'courier_label' => 'courier',
         'symptoms' => 'symptoms',
         'medicines' => 'medicines',
-        'payment_settings' => 'payment_settings',
+        'payments', 'payment_settings' => 'payments',
         'reports' => 'reports',
         'users' => 'users',
         default => 'dashboard',

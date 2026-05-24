@@ -7,7 +7,7 @@
     var partialField = document.getElementById('paymentPartialField');
     var paidInput = document.getElementById('payment_paid_amount');
     var methodSelect = document.getElementById('payment_method');
-    var statusInputs = document.querySelectorAll('.payment-status-input');
+    var statusSelect = document.getElementById('payment_status');
     var gstSummary = document.getElementById('paymentGstSummary');
 
     if (!amountInput || !detailCols.length) {
@@ -19,16 +19,16 @@
         gstPercent = parseFloat(section.getAttribute('data-gst-percent') || '0') || 0;
     }
 
+    var splitFn =
+        typeof window.gstSplitInclusive === 'function'
+            ? window.gstSplitInclusive
+            : function (net, percent) {
+                  return { base: net, gst: 0, total: net };
+              };
+
     function parseAmount() {
         var value = parseFloat(amountInput.value);
         return Number.isFinite(value) ? value : 0;
-    }
-
-    function gstAmount(base) {
-        if (base <= 0 || gstPercent <= 0) {
-            return 0;
-        }
-        return Math.round(base * gstPercent * 100) / 10000;
     }
 
     function formatMoney(value) {
@@ -39,18 +39,24 @@
         if (!gstSummary) {
             return;
         }
-        var base = parseAmount();
-        if (base <= 0) {
+        var net = parseAmount();
+        if (net <= 0) {
             gstSummary.textContent = '';
             gstSummary.classList.add('d-none');
             return;
         }
-        var gst = gstAmount(base);
-        var total = Math.round((base + gst) * 100) / 100;
+        var split = splitFn(net, gstPercent);
         gstSummary.classList.remove('d-none');
         gstSummary.textContent =
-            'GST (' + gstPercent.toFixed(2) + '%): ' + formatMoney(gst) +
-            ' · Total: ' + formatMoney(total);
+            (gstSummary.getAttribute('data-label-gst') || 'GST') +
+            ' (' +
+            gstPercent.toFixed(2) +
+            '%): ' +
+            formatMoney(split.gst) +
+            ' · ' +
+            (gstSummary.getAttribute('data-label-without-gst') || 'Without GST') +
+            ': ' +
+            formatMoney(split.base);
     }
 
     function setDetailRequired(on) {
@@ -59,10 +65,10 @@
             methodSelect.disabled = !on;
         }
 
-        statusInputs.forEach(function (input) {
-            input.required = on;
-            input.disabled = !on;
-        });
+        if (statusSelect) {
+            statusSelect.required = on;
+            statusSelect.disabled = !on;
+        }
 
         if (!on && paidInput) {
             paidInput.required = false;
@@ -76,9 +82,8 @@
             return;
         }
 
-        var amount = parseAmount();
-        var selected = document.querySelector('.payment-status-input:checked');
-        var isPartial = amount > 0 && selected && selected.value === 'partial';
+        var net = parseAmount();
+        var isPartial = net > 0 && statusSelect && statusSelect.value === 'partial';
 
         partialField.classList.toggle('d-none', !isPartial);
         paidInput.required = isPartial;
@@ -110,9 +115,9 @@
     amountInput.addEventListener('input', updatePaymentVisibility);
     amountInput.addEventListener('change', updatePaymentVisibility);
 
-    statusInputs.forEach(function (input) {
-        input.addEventListener('change', updatePartialField);
-    });
+    if (statusSelect) {
+        statusSelect.addEventListener('change', updatePartialField);
+    }
 
     updatePaymentVisibility();
 })();

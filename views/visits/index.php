@@ -30,7 +30,8 @@ $visitColumns = [
     'total' => __('visit.field.grand_total'),
     'payment_method' => __('payment.field.method'),
     'payment_status' => __('payment.field.status'),
-    'date' => __('visit.field.time'),
+    'paid_amount' => __('payment.field.paid_amount'),
+    'balance' => __('payment.field.balance'),
     'recorded_by' => __('visit.field.recorded_by'),
 ];
 

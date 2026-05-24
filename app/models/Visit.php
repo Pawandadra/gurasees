@@ -195,7 +195,7 @@ final class Visit
 
     /**
      * @param list<int> $visitIds
-     * @return array<int, list<array{name: string, quantity: int, unit_price: string, line_total: string}>>
+     * @return array<int, list<array{name: string, quantity: int, courier_quantity: int}>>
      */
     public static function medicineLinesForVisits(array $visitIds): array
     {
@@ -208,7 +208,7 @@ final class Visit
         }
 
         $map = [];
-        $sql = 'SELECT vm.visit_id, m.name, vm.quantity, vm.courier_quantity, vm.unit_price, vm.line_total
+        $sql = 'SELECT vm.visit_id, vm.medicine_id, m.name, vm.quantity, vm.courier_quantity
                 FROM visit_medicines vm
                 INNER JOIN medicines m ON m.id = vm.medicine_id
                 WHERE vm.visit_id IN (%s)
@@ -222,11 +222,10 @@ final class Visit
                 $vid = (int) $row['visit_id'];
                 $map[$vid] ??= [];
                 $map[$vid][] = [
+                    'medicine_id' => (int) $row['medicine_id'],
                     'name' => (string) $row['name'],
                     'quantity' => (int) $row['quantity'],
                     'courier_quantity' => (int) $row['courier_quantity'],
-                    'unit_price' => Medicine::formatPrice((float) $row['unit_price']),
-                    'line_total' => Medicine::formatPrice((float) $row['line_total']),
                 ];
             }
         }
@@ -255,19 +254,29 @@ final class Visit
 
         $notes = input_string($raw['notes'] ?? '', 500);
         $lines = self::parseMedicineLines($raw);
+        $medicineSubtotal = self::parseMedicineTotal($raw);
+        if ($medicineSubtotal === null) {
+            return ['ok' => false, 'errors' => ['medicine_total' => __('visit.error.medicine_total')]];
+        }
+
         $validation = Medicine::validateVisitLines($lines);
         if (!$validation['ok']) {
             return ['ok' => false, 'errors' => $validation['errors']];
         }
 
-        $visitGst = GstSettings::amountOnBase($visitCharge, GstSettings::visitChargePercent());
-        $medicineSubtotal = $validation['total'];
-        $medicineGst = GstSettings::amountOnBase($medicineSubtotal, GstSettings::medicinePercent());
-        $courierBilling = CourierSettings::billingForLines($lines);
-        $courierCharge = $courierBilling['charge'];
-        $courierGst = $courierBilling['gst'];
+        $visitSplit = GstSettings::splitInclusiveTotal($visitCharge, GstSettings::visitChargePercent());
+        $medicineSplit = GstSettings::splitInclusiveTotal($medicineSubtotal, GstSettings::medicinePercent());
+        $hasCourier = CourierSettings::appliesToLines($lines);
+        $courierSplit = ['base' => 0.0, 'gst' => 0.0, 'total' => 0.0];
+        if ($hasCourier) {
+            $courierNet = self::parseCourierTotal($raw);
+            if ($courierNet === null) {
+                return ['ok' => false, 'errors' => ['courier_charge' => __('visit.error.courier_total')]];
+            }
+            $courierSplit = GstSettings::splitInclusiveTotal($courierNet, GstSettings::courierPercent());
+        }
         $grandTotal = round(
-            $visitCharge + $visitGst + $medicineSubtotal + $medicineGst + $courierCharge + $courierGst,
+            $visitSplit['total'] + $medicineSplit['total'] + $courierSplit['total'],
             2
         );
 
@@ -296,12 +305,12 @@ final class Visit
                 'patient_id' => $patientId,
                 'visited_at' => $visitedAt->format('Y-m-d H:i:s'),
                 'notes' => $notes !== '' ? $notes : null,
-                'visit_charge' => $visitCharge,
-                'visit_gst' => $visitGst,
-                'medicine_total' => $medicineSubtotal,
-                'medicine_gst' => $medicineGst,
-                'courier_charge' => $courierCharge,
-                'courier_gst' => $courierGst,
+                'visit_charge' => $visitSplit['base'],
+                'visit_gst' => $visitSplit['gst'],
+                'medicine_total' => $medicineSplit['base'],
+                'medicine_gst' => $medicineSplit['gst'],
+                'courier_charge' => $courierSplit['base'],
+                'courier_gst' => $courierSplit['gst'],
                 'grand_total' => $grandTotal,
                 'payment_method' => $payment['payment_method'],
                 'payment_status' => $payment['payment_status'],
@@ -314,6 +323,16 @@ final class Visit
             $visitId = (int) $pdo->lastInsertId();
             if ($lines !== []) {
                 Medicine::attachToVisit($visitId, $lines);
+            }
+
+            if (CourierSettings::appliesToLines($lines)) {
+                $statusStmt = $pdo->prepare(
+                    'UPDATE visits SET courier_status = :status WHERE id = :id'
+                );
+                $statusStmt->execute([
+                    'status' => 'pending',
+                    'id' => $visitId,
+                ]);
             }
 
             $pdo->commit();
@@ -374,6 +393,245 @@ final class Visit
         return $dt->format('h:i A');
     }
 
+    public static function formatVisitedDate(string $datetime): string
+    {
+        $dt = self::parseVisitedAt($datetime);
+        if ($dt === null) {
+            return $datetime;
+        }
+
+        return $dt->format('d M Y');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function findForPatient(int $visitId, int $patientId): ?array
+    {
+        if ($visitId < 1 || $patientId < 1) {
+            return null;
+        }
+
+        $stmt = db()->prepare(
+            'SELECT v.*, u.name AS recorded_by_name, p.patient_code
+             FROM visits v
+             INNER JOIN patients p ON p.id = v.patient_id
+             LEFT JOIN users u ON u.id = v.recorded_by
+             WHERE v.id = :vid AND v.patient_id = :pid
+             LIMIT 1'
+        );
+        $stmt->execute(['vid' => $visitId, 'pid' => $patientId]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            return null;
+        }
+
+        $row['medicine_lines'] = self::medicineLinesForVisits([(int) $row['id']])[(int) $row['id']] ?? [];
+
+        return $row;
+    }
+
+    /**
+     * @param array<string, mixed> $visit
+     */
+    public static function canModify(array $visit): bool
+    {
+        return (string) ($visit['courier_status'] ?? '') !== 'sent';
+    }
+
+    /**
+     * @param array<string, mixed> $visit
+     * @return array<string, mixed>
+     */
+    public static function recordToFormState(array $visit): array
+    {
+        $dt = self::parseVisitedAt((string) ($visit['visited_at'] ?? ''));
+        $visitInclusive = round((float) ($visit['visit_charge'] ?? 0) + (float) ($visit['visit_gst'] ?? 0), 2);
+        $medicineInclusive = round((float) ($visit['medicine_total'] ?? 0) + (float) ($visit['medicine_gst'] ?? 0), 2);
+        $courierInclusive = round((float) ($visit['courier_charge'] ?? 0) + (float) ($visit['courier_gst'] ?? 0), 2);
+
+        $medicines = [];
+        foreach ($visit['medicine_lines'] ?? [] as $line) {
+            $medicines[] = [
+                'medicine_id' => (int) ($line['medicine_id'] ?? 0),
+                'quantity' => (int) ($line['quantity'] ?? 0),
+                'courier_quantity' => (int) ($line['courier_quantity'] ?? 0),
+            ];
+        }
+
+        $status = (string) ($visit['payment_status'] ?? '');
+        $paid = $visit['payment_paid_amount'] ?? null;
+
+        return [
+            'visited_at' => $dt !== null ? $dt->format('Y-m-d\TH:i') : '',
+            'notes' => (string) ($visit['notes'] ?? ''),
+            'visit_charge' => Medicine::formatPrice($visitInclusive),
+            'medicine_total' => $medicineInclusive > 0 ? Medicine::formatPrice($medicineInclusive) : '',
+            'courier_charge' => $courierInclusive > 0 ? Medicine::formatPrice($courierInclusive) : '',
+            'payment_method' => (string) ($visit['payment_method'] ?? ''),
+            'payment_status' => $status,
+            'payment_paid_amount' => $status === 'partial' && $paid !== null
+                ? Medicine::formatPrice((float) $paid)
+                : '',
+            'medicines' => $medicines,
+        ];
+    }
+
+    /**
+     * @return array{ok: true}|array{ok: false, errors: array<string, string>}
+     */
+    public static function update(int $visitId, int $patientId, array $raw): array
+    {
+        $visit = self::findForPatient($visitId, $patientId);
+        if ($visit === null) {
+            return ['ok' => false, 'errors' => ['_form' => __('visit.error.not_found')]];
+        }
+
+        if (!self::canModify($visit)) {
+            return ['ok' => false, 'errors' => ['_form' => __('visit.error.courier_sent')]];
+        }
+
+        $visitedAt = self::parseVisitedAt((string) ($raw['visited_at'] ?? ''));
+        if ($visitedAt === null) {
+            return ['ok' => false, 'errors' => ['visited_at' => __('visit.error.datetime')]];
+        }
+
+        $visitCharge = self::parseVisitCharge($raw);
+        if ($visitCharge === null) {
+            return ['ok' => false, 'errors' => ['visit_charge' => __('visit.error.charge')]];
+        }
+
+        $notes = input_string($raw['notes'] ?? '', 500);
+        $lines = self::parseMedicineLines($raw);
+        $medicineSubtotal = self::parseMedicineTotal($raw);
+        if ($medicineSubtotal === null) {
+            return ['ok' => false, 'errors' => ['medicine_total' => __('visit.error.medicine_total')]];
+        }
+
+        $validation = Medicine::validateVisitLines($lines);
+        if (!$validation['ok']) {
+            return ['ok' => false, 'errors' => $validation['errors']];
+        }
+
+        $visitSplit = GstSettings::splitInclusiveTotal($visitCharge, GstSettings::visitChargePercent());
+        $medicineSplit = GstSettings::splitInclusiveTotal($medicineSubtotal, GstSettings::medicinePercent());
+        $hasCourier = CourierSettings::appliesToLines($lines);
+        $courierSplit = ['base' => 0.0, 'gst' => 0.0, 'total' => 0.0];
+        if ($hasCourier) {
+            $courierNet = self::parseCourierTotal($raw);
+            if ($courierNet === null) {
+                return ['ok' => false, 'errors' => ['courier_charge' => __('visit.error.courier_total')]];
+            }
+            $courierSplit = GstSettings::splitInclusiveTotal($courierNet, GstSettings::courierPercent());
+        }
+        $grandTotal = round(
+            $visitSplit['total'] + $medicineSplit['total'] + $courierSplit['total'],
+            2
+        );
+
+        $payment = PaymentSettings::sanitizeVisitPayment($raw, $grandTotal);
+        $paymentErrors = PaymentSettings::validateVisitPayment($payment, $grandTotal);
+        if ($paymentErrors !== []) {
+            return ['ok' => false, 'errors' => $paymentErrors];
+        }
+
+        $pdo = db();
+        $pdo->beginTransaction();
+
+        try {
+            Medicine::restoreVisitStock($visitId);
+
+            $del = $pdo->prepare('DELETE FROM visit_medicines WHERE visit_id = :vid');
+            $del->execute(['vid' => $visitId]);
+
+            $stmt = $pdo->prepare(
+                'UPDATE visits
+                 SET visited_at = :visited_at, notes = :notes,
+                     visit_charge = :visit_charge, visit_gst = :visit_gst,
+                     medicine_total = :medicine_total, medicine_gst = :medicine_gst,
+                     courier_charge = :courier_charge, courier_gst = :courier_gst,
+                     grand_total = :grand_total,
+                     payment_method = :payment_method, payment_status = :payment_status,
+                     payment_paid_amount = :payment_paid_amount,
+                     courier_status = :courier_status,
+                     courier_dispatched_at = NULL, courier_dispatched_by = NULL
+                 WHERE id = :id AND patient_id = :pid'
+            );
+            $courierStatus = $hasCourier ? 'pending' : null;
+            $stmt->execute([
+                'visited_at' => $visitedAt->format('Y-m-d H:i:s'),
+                'notes' => $notes !== '' ? $notes : null,
+                'visit_charge' => $visitSplit['base'],
+                'visit_gst' => $visitSplit['gst'],
+                'medicine_total' => $medicineSplit['base'],
+                'medicine_gst' => $medicineSplit['gst'],
+                'courier_charge' => $courierSplit['base'],
+                'courier_gst' => $courierSplit['gst'],
+                'grand_total' => $grandTotal,
+                'payment_method' => $payment['payment_method'],
+                'payment_status' => $payment['payment_status'],
+                'payment_paid_amount' => $payment['payment_status'] === 'partial'
+                    ? $payment['payment_paid_amount']
+                    : null,
+                'courier_status' => $courierStatus,
+                'id' => $visitId,
+                'pid' => $patientId,
+            ]);
+
+            if ($lines !== []) {
+                Medicine::attachToVisit($visitId, $lines);
+            }
+
+            $pdo->commit();
+        } catch (Throwable) {
+            $pdo->rollBack();
+
+            return ['ok' => false, 'errors' => ['_form' => __('reception.error.database')]];
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
+     * @return array{ok: true}|array{ok: false, errors: array<string, string>}
+     */
+    public static function delete(int $visitId, int $patientId): array
+    {
+        $visit = self::findForPatient($visitId, $patientId);
+        if ($visit === null) {
+            return ['ok' => false, 'errors' => ['_form' => __('visit.error.not_found')]];
+        }
+
+        if (!self::canModify($visit)) {
+            return ['ok' => false, 'errors' => ['_form' => __('visit.error.courier_sent')]];
+        }
+
+        $pdo = db();
+        $pdo->beginTransaction();
+
+        try {
+            Medicine::restoreVisitStock($visitId);
+
+            $stmt = $pdo->prepare('DELETE FROM visits WHERE id = :id AND patient_id = :pid LIMIT 1');
+            $stmt->execute(['id' => $visitId, 'pid' => $patientId]);
+
+            if ($stmt->rowCount() === 0) {
+                $pdo->rollBack();
+
+                return ['ok' => false, 'errors' => ['_form' => __('visit.error.not_found')]];
+            }
+
+            $pdo->commit();
+        } catch (Throwable) {
+            $pdo->rollBack();
+
+            return ['ok' => false, 'errors' => ['_form' => __('reception.error.database')]];
+        }
+
+        return ['ok' => true];
+    }
+
     public static function visitedDateKey(string $datetime): string
     {
         $dt = self::parseVisitedAt($datetime);
@@ -424,6 +682,53 @@ final class Visit
     }
 
     /**
+     * @param list<array<string, mixed>> $visits
+     */
+    public static function listHasPartialPayment(array $visits): bool
+    {
+        foreach ($visits as $visit) {
+            if ((string) ($visit['payment_status'] ?? '') === 'partial') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $visit
+     */
+    public static function paymentPaidAmount(array $visit): float
+    {
+        $grandTotal = round((float) ($visit['grand_total'] ?? 0), 2);
+
+        return match ((string) ($visit['payment_status'] ?? '')) {
+            'paid' => $grandTotal,
+            'partial' => round((float) ($visit['payment_paid_amount'] ?? 0), 2),
+            default => 0.0,
+        };
+    }
+
+    /**
+     * @param array<string, mixed> $visit
+     */
+    public static function paymentBalance(array $visit): float
+    {
+        $grandTotal = (float) ($visit['grand_total'] ?? 0);
+        if ($grandTotal <= 0) {
+            return 0.0;
+        }
+
+        $status = (string) ($visit['payment_status'] ?? '');
+
+        return match ($status) {
+            'pending' => $grandTotal,
+            'partial' => max(0.0, round($grandTotal - self::paymentPaidAmount($visit), 2)),
+            default => 0.0,
+        };
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function billingDefaults(): array
@@ -431,7 +736,6 @@ final class Visit
         return array_merge(
             [
                 'visit_charge' => VisitSettings::formatCharge(VisitSettings::defaultCharge()),
-                'courier_charge' => CourierSettings::formatCharge(CourierSettings::defaultCharge()),
                 'gst_visit_percent' => GstSettings::formatPercent(GstSettings::visitChargePercent()),
                 'gst_medicine_percent' => GstSettings::formatPercent(GstSettings::medicinePercent()),
                 'gst_courier_percent' => GstSettings::formatPercent(GstSettings::courierPercent()),
@@ -444,6 +748,32 @@ final class Visit
     {
         $value = trim((string) ($raw['visit_charge'] ?? ''));
         if ($value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        return max(0.0, round((float) $value, 2));
+    }
+
+    private static function parseMedicineTotal(array $raw): ?float
+    {
+        $value = trim((string) ($raw['medicine_total'] ?? ''));
+        if ($value === '') {
+            return 0.0;
+        }
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        return max(0.0, round((float) $value, 2));
+    }
+
+    private static function parseCourierTotal(array $raw): ?float
+    {
+        $value = trim((string) ($raw['courier_charge'] ?? ''));
+        if ($value === '') {
+            return 0.0;
+        }
+        if (!is_numeric($value)) {
             return null;
         }
 

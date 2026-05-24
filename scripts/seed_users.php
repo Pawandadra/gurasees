@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 /**
  * CLI: php scripts/seed_users.php
- * Creates default users (change passwords after first login).
+ * Creates the initial admin account when the users table is empty.
+ * Managers and receptionists are added later via Users (admin only).
  */
 require dirname(__DIR__) . '/app/bootstrap.php';
 
-$defaults = [
-    ['username' => 'admin', 'password' => 'Admin@123', 'name' => 'Administrator', 'role' => 'admin'],
-    ['username' => 'manager', 'password' => 'Manager@123', 'name' => 'Clinic Manager', 'role' => 'manager'],
-    ['username' => 'reception', 'password' => 'Reception@123', 'name' => 'Reception Desk', 'role' => 'receptionist'],
+$admin = [
+    'username' => 'admin',
+    'password' => 'Admin@123',
+    'name' => 'Administrator',
+    'role' => 'admin',
 ];
 
 try {
@@ -25,18 +27,16 @@ try {
     $stmt = $pdo->prepare(
         'INSERT INTO users (username, password_hash, name, role) VALUES (:u, :p, :n, :r)'
     );
+    $stmt->execute([
+        'u' => $admin['username'],
+        'p' => password_hash($admin['password'], PASSWORD_DEFAULT),
+        'n' => $admin['name'],
+        'r' => $admin['role'],
+    ]);
 
-    foreach ($defaults as $row) {
-        $stmt->execute([
-            'u' => $row['username'],
-            'p' => password_hash($row['password'], PASSWORD_DEFAULT),
-            'n' => $row['name'],
-            'r' => $row['role'],
-        ]);
-        echo "Created: {$row['username']} ({$row['role']})\n";
-    }
-
-    echo "Done. Change default passwords in production.\n";
+    echo "Created admin user: {$admin['username']}\n";
+    echo "Change the default password after first login.\n";
+    echo "Add manager and receptionist accounts from Users in the app.\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'Error: ' . $e->getMessage() . "\n");
     exit(1);

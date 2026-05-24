@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * CLI: php scripts/install_db.php
  * Creates tables and default settings from sql/schema.sql.
- * Then run: php scripts/seed_users.php
+ * Then run: php scripts/seed_users.php (admin account only).
  */
 
 require dirname(__DIR__) . '/app/bootstrap.php';

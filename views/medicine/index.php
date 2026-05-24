@@ -3,22 +3,38 @@
 declare(strict_types=1);
 
 /** @var array<string, string> $errors */
-/** @var array<string, string> $portionErrors */
+/** @var array<string, string> $editErrors */
+/** @var int|null $editId */
 /** @var list<array<string, mixed>> $medicines */
-/** @var string $addType */
+/** @var string $sort */
+/** @var string $dir */
+/** @var array{q: string, kind: string} $listFilters */
+/** @var array<string, scalar|null> $sortFilterQuery */
+/** @var bool $hasFilters */
+/** @var int $totalMedicines */
 /** @var string|null $successMessage */
 /** @var string|null $errorMessage */
 /** @var bool $dbError */
 
 $pageTitle = __('medicine.manage.title');
 $errors = $errors ?? [];
-$portionErrors = $portionErrors ?? [];
-$addType = $addType ?? Medicine::KIND_UNIT;
-$portionBulkId = (int) ($_POST['bulk_id'] ?? 0);
+$editErrors = $editErrors ?? [];
+$editId = $editId ?? null;
+$sort = $sort ?? 'name';
+$dir = $dir ?? 'asc';
+$listFilters = $listFilters ?? ['q' => '', 'kind' => ''];
+$sortFilterQuery = $sortFilterQuery ?? [];
+$hasFilters = $hasFilters ?? false;
+$totalMedicines = $totalMedicines ?? 0;
+$listPath = '/medicines.php';
+$medicineColumns = [
+    'name' => __('medicine.field.name'),
+];
 
 ob_start();
 ?>
-<h1 class="reception-page-title mb-4"><?= e(__('medicine.manage.title')) ?></h1>
+<div class="medicine-manage-page">
+<h1 class="reception-page-title medicine-manage-title"><?= e(__('medicine.manage.title')) ?></h1>
 
 <?php if ($dbError): ?>
     <div class="alert alert-warning"><?= e(__('reception.error.database')) ?></div>
@@ -32,184 +48,150 @@ ob_start();
         <div class="alert alert-danger"><?= e($errorMessage) ?></div>
     <?php endif; ?>
 
-    <?php if (isset($portionErrors['_form'])): ?>
-        <div class="alert alert-danger"><?= e($portionErrors['_form']) ?></div>
-    <?php endif; ?>
+    <section class="reception-card reception-form medicine-manage-card">
+        <h2 class="reception-card-title h6 medicine-manage-card-title"><?= e(__('medicine.add.title')) ?></h2>
 
-    <section class="reception-card reception-form mb-4">
-        <h2 class="reception-card-title h6 mb-3"><?= e(__('medicine.add.title')) ?></h2>
-        <p class="text-muted small mb-3"><?= e(__('medicine.add.hint')) ?></p>
-
-        <form method="post" action="<?= e(base_url('/medicines.php')) ?>" class="medicine-add-form" id="medicineAddForm">
+        <form method="post" action="<?= e(base_url('/medicines.php')) ?>" class="medicine-add-form" id="medicineAddForm"
+              data-confirm-message="<?= e(__('medicine.add.confirm_message')) ?>">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="add">
+            <?php require BASE_PATH . '/views/partials/medicine_list_preserve.php'; ?>
 
-            <div class="row g-2 g-xl-3 align-items-end medicine-add-fields">
-                <div class="col-auto medicine-add-type-col">
-                    <label for="medicine_type" class="form-label"><?= e(__('medicine.field.type')) ?></label>
-                    <select class="form-select medicine-add-type-select" id="medicine_type" name="medicine_type" required>
-                        <option value="unit"<?= $addType === Medicine::KIND_UNIT ? ' selected' : '' ?>>
-                            <?= e(__('medicine.kind.unit')) ?>
-                        </option>
-                        <option value="bulk"<?= $addType === Medicine::KIND_BULK ? ' selected' : '' ?>>
-                            <?= e(__('medicine.kind.bulk')) ?>
-                        </option>
-                    </select>
-                </div>
-                <div class="col medicine-add-name-col">
-                    <label for="medicine_name" class="form-label"><?= e(__('medicine.field.name')) ?></label>
+            <div class="medicine-add-toolbar">
+                <div class="medicine-add-toolbar-field">
+                    <label for="medicine_name" class="form-label visually-hidden"><?= e(__('medicine.field.name')) ?></label>
                     <input type="text" class="form-control form-control-sm<?= field_invalid($errors, 'name') ?>"
                            id="medicine_name" name="name" maxlength="120" required
+                           placeholder="<?= e(__('medicine.field.name')) ?>"
                            value="<?= e((string) ($_POST['name'] ?? '')) ?>">
                     <?php show_field_error($errors, 'name'); ?>
                 </div>
-
-                <div class="col-6 col-md-4 col-xl-auto medicine-add-unit-col" data-medicine-fields="unit">
-                    <label for="medicine_unit_price" class="form-label"><?= e(__('medicine.field.price')) ?></label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text">₹</span>
-                        <input type="number" class="form-control<?= field_invalid($errors, 'unit_price') ?>"
-                               id="medicine_unit_price" name="unit_price" min="0.01" step="0.01"
-                               value="<?= e((string) ($_POST['unit_price'] ?? '')) ?>">
-                    </div>
-                    <?php show_field_error($errors, 'unit_price'); ?>
-                </div>
-                <div class="col-6 col-md-4 col-xl-auto medicine-add-unit-col" data-medicine-fields="unit">
-                    <label for="medicine_stock" class="form-label"><?= e(__('medicine.field.stock')) ?></label>
-                    <input type="number" class="form-control form-control-sm<?= field_invalid($errors, 'stock_quantity') ?>"
-                           id="medicine_stock" name="stock_quantity" min="0" step="1"
-                           value="<?= e((string) ($_POST['stock_quantity'] ?? '')) ?>">
-                    <?php show_field_error($errors, 'stock_quantity'); ?>
-                </div>
-
-                <div class="col-6 col-md-4 col-xl-auto medicine-add-bulk-col" data-medicine-fields="bulk" hidden>
-                    <label for="container_ml" class="form-label"><?= e(__('medicine.bulk.field.container_ml')) ?></label>
-                    <div class="input-group input-group-sm" data-volume-group>
-                        <input type="number" class="form-control<?= field_invalid($errors, 'container_ml') ?>"
-                               id="container_ml" name="container_ml" min="1" step="1"
-                               data-volume-input
-                               value="<?= e((string) ($_POST['container_ml'] ?? '')) ?>">
-                        <input type="hidden" name="container_volume_unit"
-                               value="<?= e((string) ($_POST['container_volume_unit'] ?? 'ml')) ?>" data-volume-unit-field>
-                        <button type="button" class="input-group-text volume-unit-toggle" data-unit="ml"
-                                title="<?= e(__('medicine.unit.toggle')) ?>">ml</button>
-                    </div>
-                    <?php show_field_error($errors, 'container_ml'); ?>
-                </div>
-                <div class="col-6 col-md-4 col-xl-auto medicine-add-bulk-col" data-medicine-fields="bulk" hidden>
-                    <label for="container_count" class="form-label"><?= e(__('medicine.bulk.field.container_count')) ?></label>
-                    <input type="number" class="form-control form-control-sm<?= field_invalid($errors, 'container_count') ?>"
-                           id="container_count" name="container_count" min="1" step="1"
-                           value="<?= e((string) ($_POST['container_count'] ?? '')) ?>">
-                    <?php show_field_error($errors, 'container_count'); ?>
-                </div>
-                <div class="col-6 col-md-4 col-xl-auto medicine-add-bulk-col" data-medicine-fields="bulk" hidden>
-                    <label for="unit_size_ml" class="form-label"><?= e(__('medicine.field.unit_size')) ?></label>
-                    <div class="input-group input-group-sm" data-volume-group>
-                        <input type="number" class="form-control<?= field_invalid($errors, 'unit_size_ml') ?>"
-                               id="unit_size_ml" name="unit_size_ml" min="1" step="1"
-                               data-volume-input
-                               value="<?= e((string) ($_POST['unit_size_ml'] ?? '100')) ?>">
-                        <input type="hidden" name="unit_size_volume_unit"
-                               value="<?= e((string) ($_POST['unit_size_volume_unit'] ?? 'ml')) ?>" data-volume-unit-field>
-                        <button type="button" class="input-group-text volume-unit-toggle" data-unit="ml"
-                                title="<?= e(__('medicine.unit.toggle')) ?>">ml</button>
-                    </div>
-                    <?php show_field_error($errors, 'unit_size_ml'); ?>
-                </div>
-
-                <div class="col-auto medicine-add-submit-col">
-                    <label class="form-label d-none d-xl-block" aria-hidden="true">&nbsp;</label>
-                    <button type="submit" class="btn btn-reception-primary text-nowrap"><?= e(__('medicine.add.submit')) ?></button>
+                <div class="medicine-add-toolbar-actions">
+                    <button type="button" class="btn btn-sm btn-reception-primary text-nowrap confirm-action-trigger"
+                            data-confirm-title="<?= e(__('medicine.add.confirm_title')) ?>"
+                            data-confirm="<?= e(__('medicine.add.confirm_message')) ?>"
+                            data-confirm-label="<?= e(__('medicine.add.submit')) ?>"
+                            data-confirm-variant="primary">
+                        <?= e(__('medicine.add.submit')) ?>
+                    </button>
                 </div>
             </div>
         </form>
     </section>
 
-    <section class="reception-card">
-        <h2 class="reception-card-title h6 mb-3"><?= e(__('medicine.list.title')) ?></h2>
+    <section class="reception-card reception-form medicine-manage-card">
+        <h2 class="reception-card-title h6 medicine-manage-card-title"><?= e(__('medicine.list.filters')) ?></h2>
+        <form method="get" action="<?= e(base_url($listPath)) ?>" class="patient-list-filters medicine-list-filters">
+            <input type="hidden" name="sort" value="<?= e($sort) ?>">
+            <input type="hidden" name="dir" value="<?= e($dir) ?>">
+            <div class="patient-list-filters-row medicine-list-filters-row">
+                <div class="patient-list-filter-search">
+                    <label for="medicine_filter_q" class="form-label"><?= e(__('medicine.list.search')) ?></label>
+                    <input type="search" class="form-control" id="medicine_filter_q" name="q"
+                           value="<?= e($listFilters['q']) ?>"
+                           placeholder="<?= e(__('medicine.list.search_placeholder')) ?>"
+                           autocomplete="off">
+                </div>
+                <div class="patient-list-filter-actions">
+                    <button type="submit" class="btn btn-reception-primary"><?= e(__('patients.list.apply')) ?></button>
+                    <?php if ($hasFilters): ?>
+                        <a href="<?= e(medicine_list_url($sort, $dir)) ?>"
+                           class="btn btn-outline-secondary"><?= e(__('patients.list.clear')) ?></a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <section class="reception-card medicine-manage-card medicine-manage-list-card">
+        <h2 class="reception-card-title h6 medicine-manage-card-title mb-0">
+            <?= e(__('medicine.list.results', ['count' => $totalMedicines])) ?>
+        </h2>
 
         <?php if ($medicines === []): ?>
-            <p class="text-muted mb-0"><?= e(__('medicine.list.empty')) ?></p>
+            <p class="text-muted mb-0">
+                <?= e($hasFilters ? __('medicine.list.empty') : __('medicine.list.empty_all')) ?>
+            </p>
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table table-hover reception-table mb-0 medicine-inventory-table">
                     <thead>
                     <tr>
-                        <th scope="col"><?= e(__('medicine.field.name')) ?></th>
-                        <th scope="col"><?= e(__('medicine.field.type')) ?></th>
-                        <th scope="col" class="text-end"><?= e(__('medicine.field.price')) ?></th>
-                        <th scope="col" class="text-end"><?= e(__('medicine.field.stock')) ?></th>
-                        <th scope="col"><?= e(__('medicine.field.source')) ?></th>
-                        <th scope="col" class="text-end"><?= e(__('patient.field.actions')) ?></th>
+                        <?php foreach ($medicineColumns as $colKey => $colLabel): ?>
+                            <th scope="col"<?= medicine_sort_th_attr($colKey, $sort, $dir) ?>>
+                                <a href="<?= e(medicine_sort_url($colKey, $sort, $dir, $sortFilterQuery)) ?>"
+                                   class="reception-sort-link">
+                                    <?= e($colLabel) ?>
+                                    <?php if ($sort === $colKey): ?>
+                                        <span class="reception-sort-icon" aria-hidden="true"><?= $dir === 'asc' ? '▲' : '▼' ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </th>
+                        <?php endforeach; ?>
+                        <th scope="col" class="text-end col-actions"><?= e(__('patient.field.actions')) ?></th>
                     </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($medicines as $medicine): ?>
                         <?php
-                        $isBulk = (string) $medicine['kind'] === Medicine::KIND_BULK;
-                        $bulkId = (int) $medicine['id'];
-                        $showPortionRow = $isBulk && $portionBulkId === $bulkId && $portionErrors !== [];
+                        $medicineId = (int) $medicine['id'];
+                        $isEditing = $editId === $medicineId;
+                        $rowEditErrors = $isEditing ? $editErrors : [];
                         ?>
-                        <tr>
-                            <td><?= e($medicine['name']) ?></td>
-                            <td>
-                                <span class="medicine-kind-badge medicine-kind-<?= e((string) $medicine['kind']) ?>">
-                                    <?= e(Medicine::kindLabel((string) $medicine['kind'])) ?>
-                                </span>
-                            </td>
-                            <td class="text-end">
-                                <?php if ($isBulk): ?>
-                                    <?= table_na() ?>
-                                <?php else: ?>
-                                    <?= e(Medicine::formatPriceDisplay((float) $medicine['unit_price'])) ?>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-end"><?= e((string) $medicine['stock_display']) ?></td>
-                            <td class="small text-muted">
-                                <?php if ($isBulk && !empty($medicine['portion_size_ml'])): ?>
-                                    <?= e(__('medicine.bulk.unit_size_display', [
-                                        'size' => Medicine::formatVolumeMl((int) $medicine['portion_size_ml']),
-                                    ])) ?>
-                                <?php elseif (!empty($medicine['bulk_source_name'])): ?>
-                                    <?= e(__('medicine.source.from_bulk', [
-                                        'name' => (string) $medicine['bulk_source_name'],
-                                        'size' => Medicine::formatVolumeMl((int) ($medicine['portion_size_ml'] ?? 0)),
-                                    ])) ?>
-                                <?php else: ?>
-                                    <?= table_na() ?>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-end text-nowrap">
-                                <?php if ($isBulk && (int) $medicine['stock_quantity'] > 0): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-primary me-1"
-                                            data-bs-toggle="collapse"
-                                            data-bs-target="#portionRow<?= $bulkId ?>"
-                                            aria-expanded="<?= $showPortionRow ? 'true' : 'false' ?>">
-                                        <?= e(__('medicine.portion.action')) ?>
-                                    </button>
-                                <?php endif; ?>
-                                <form method="post" action="<?= e(base_url('/medicines.php')) ?>" class="d-inline">
+                        <tr class="medicine-inventory-row<?= $isEditing ? ' is-editing' : '' ?>"
+                            data-medicine-id="<?= e((string) $medicineId) ?>">
+                            <td class="medicine-name-cell">
+                                <div class="medicine-name-view<?= $isEditing ? ' d-none' : '' ?>">
+                                    <span class="medicine-name-display"><?= e($medicine['name']) ?></span>
+                                </div>
+                                <form method="post" action="<?= e(base_url('/medicines.php')) ?>"
+                                      class="medicine-inline-edit-form<?= $isEditing ? '' : ' d-none' ?>">
                                     <?= csrf_field() ?>
-                                    <input type="hidden" name="action" value="remove">
-                                    <input type="hidden" name="id" value="<?= e((string) $medicine['id']) ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger patient-delete-trigger"
-                                            data-patient-name="<?= e($medicine['name']) ?>">
-                                        <?= e(__('medicine.action.remove')) ?>
-                                    </button>
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="id" value="<?= e((string) $medicineId) ?>">
+                                    <?php require BASE_PATH . '/views/partials/medicine_list_preserve.php'; ?>
+                                    <div class="medicine-inline-edit-row">
+                                        <input type="text"
+                                               class="form-control form-control-sm medicine-inline-edit-input<?= field_invalid($rowEditErrors, 'name') ?>"
+                                               name="name" maxlength="120" required
+                                               value="<?= e($isEditing ? (string) ($_POST['name'] ?? $medicine['name']) : (string) $medicine['name']) ?>">
+                                        <button type="submit" class="btn btn-sm btn-reception-primary text-nowrap">
+                                            <?= e(__('medicine.edit.submit')) ?>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary medicine-inline-cancel text-nowrap">
+                                            <?= e(__('action.cancel')) ?>
+                                        </button>
+                                    </div>
+                                    <?php show_field_error($rowEditErrors, 'name'); ?>
+                                    <?php show_field_error($rowEditErrors, '_form'); ?>
                                 </form>
                             </td>
+                            <td class="text-end text-nowrap">
+                                <div class="medicine-actions">
+                                    <button type="button"
+                                            class="patient-action-btn medicine-edit-trigger<?= $isEditing ? ' d-none' : '' ?>"
+                                            title="<?= e(__('medicine.action.edit')) ?>"
+                                            aria-label="<?= e(__('medicine.action.edit') . ': ' . $medicine['name']) ?>">
+                                        <?php require BASE_PATH . '/views/partials/icons/edit.php'; ?>
+                                    </button>
+                                    <form method="post" action="<?= e(base_url('/medicines.php')) ?>" class="patient-action-delete-form">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="remove">
+                                        <input type="hidden" name="id" value="<?= e((string) $medicineId) ?>">
+                                        <?php require BASE_PATH . '/views/partials/medicine_list_preserve.php'; ?>
+                                        <button type="button"
+                                                class="patient-action-btn patient-action-delete confirm-action-trigger"
+                                                data-confirm-title="<?= e(__('medicine.delete.confirm_title')) ?>"
+                                                data-confirm="<?= e(__('medicine.delete.confirm', ['name' => $medicine['name']])) ?>"
+                                                data-confirm-label="<?= e(__('medicine.action.remove')) ?>"
+                                                title="<?= e(__('medicine.action.remove')) ?>"
+                                                aria-label="<?= e(__('medicine.action.remove')) ?>">
+                                            <?php require BASE_PATH . '/views/partials/icons/delete.php'; ?>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
-                        <?php if ($isBulk): ?>
-                            <tr class="medicine-portion-row collapse<?= $showPortionRow ? ' show' : '' ?>" id="portionRow<?= $bulkId ?>">
-                                <td colspan="6" class="bg-light">
-                                    <?php
-                                    $bulk = $medicine;
-                                    require BASE_PATH . '/views/partials/medicine_portion_form.php';
-                                    ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -218,7 +200,8 @@ ob_start();
     </section>
 
 <?php endif; ?>
+</div>
 <?php
-$pageScripts = ['assets/js/medicine-add.js'];
+$pageScripts = ['assets/js/medicine-add.js', 'assets/js/medicine-edit-inline.js'];
 $content = ob_get_clean();
 require BASE_PATH . '/views/layouts/dashboard.php';

@@ -9,9 +9,10 @@ auth_require();
 
 $role = auth_user()['role'] ?? '';
 
-if ($role === 'receptionist') {
+if (in_array($role, ['receptionist', 'manager'], true)) {
     $errors = [];
     $old = patient_form_defaults();
+    $existingPatientCode = null;
     $successMessage = flash_get('success');
     $errorMessage = flash_get('error');
 
@@ -19,29 +20,49 @@ if ($role === 'receptionist') {
         csrf_require();
         $result = Patient::register($_POST);
 
+        if (request_wants_json()) {
+            header('Content-Type: application/json; charset=utf-8');
+            if ($result['ok']) {
+                echo json_encode([
+                    'ok' => true,
+                    'patient_code' => $result['patient_code'],
+                    'message' => __('patient.register.success', ['code' => $result['patient_code']]),
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                $payload = ['ok' => false, 'errors' => $result['errors']];
+                if (!empty($result['existing_patient_code'])) {
+                    $payload['existing_patient_code'] = $result['existing_patient_code'];
+                }
+                echo json_encode($payload, JSON_THROW_ON_ERROR);
+            }
+            exit;
+        }
+
         if ($result['ok']) {
             flash_set('success', __('patient.register.success', ['code' => $result['patient_code']]));
             redirect(base_url('/dashboard.php'));
         }
 
         $errors = $result['errors'];
+        $existingPatientCode = $result['existing_patient_code'] ?? null;
         $old = Patient::formStateFromRaw($_POST);
     }
 
-    $sortParams = Patient::normalizeSort(
-        (string) ($_GET['sort'] ?? 'date'),
-        (string) ($_GET['dir'] ?? 'desc')
-    );
+    try {
+        $recentPatients = Patient::lastRegistered();
+        $dbError = false;
+    } catch (Throwable) {
+        $recentPatients = [];
+        $dbError = true;
+    }
 
-    view('receptionist/dashboard', array_merge(
-        compact('errors', 'old', 'successMessage', 'errorMessage'),
-        $sortParams
-    ));
-    exit;
-}
+    $viewData = compact('errors', 'old', 'existingPatientCode', 'successMessage', 'errorMessage', 'recentPatients', 'dbError');
 
-if ($role === 'manager') {
-    view('dashboard/manager');
+    if ($role === 'manager') {
+        view('dashboard/manager', $viewData);
+    } else {
+        view('receptionist/dashboard', $viewData);
+    }
     exit;
 }
 

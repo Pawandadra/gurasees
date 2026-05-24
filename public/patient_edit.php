@@ -24,21 +24,25 @@ $listFilters = patient_list_filters_from_request();
 
 $errors = [];
 $old = Patient::recordToForm($patient);
+$existingPatientCode = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_require();
-    $result = Patient::update($code, $_POST);
+    $user = auth_user();
+    $editedBy = $user !== null ? (int) $user['id'] : null;
+    $result = Patient::update($code, $_POST, $editedBy);
 
     if ($result['ok']) {
         flash_set('success', __('patient.update.success', ['code' => $code]));
-        redirect(patient_return_url($return, $sortParams['sort'], $sortParams['dir'], $listFilters));
+        redirect(patient_view_url($code, $return, $sortParams['sort'], $sortParams['dir'], $listFilters));
     }
 
     $errors = $result['errors'];
     $old = Patient::formStateFromRaw($_POST);
+    $existingPatientCode = $result['existing_patient_code'] ?? null;
 }
 
 $pageTitle = __('patient.edit.title');
 $activeNav = $return === 'patients' ? 'patients' : 'dashboard';
 
-view('patient/edit', array_merge(compact('errors', 'old', 'code', 'return', 'listFilters'), $sortParams));
+view('patient/edit', array_merge(compact('errors', 'old', 'code', 'return', 'listFilters', 'existingPatientCode'), $sortParams));

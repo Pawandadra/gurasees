@@ -3,14 +3,6 @@
 
     document.querySelectorAll('.phone-country-picker').forEach(initPicker);
 
-    document.addEventListener('click', function (event) {
-        document.querySelectorAll('.phone-country-picker.is-open').forEach(function (root) {
-            if (!root.contains(event.target)) {
-                root.dispatchEvent(new CustomEvent('phone-country:close'));
-            }
-        });
-    });
-
     function initPicker(root) {
         var hidden = root.querySelector('input[type="hidden"]');
         var trigger = root.querySelector('.phone-country-trigger');
@@ -105,7 +97,7 @@
             if (!phoneInput) {
                 return;
             }
-            phoneInput.placeholder = iso === 'IN' ? '9876543210' : '';
+            phoneInput.removeAttribute('placeholder');
             phoneInput.maxLength = iso === 'IN' ? 10 : 14;
         }
 

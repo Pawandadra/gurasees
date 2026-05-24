@@ -37,7 +37,7 @@ function captcha_output_image(): void
 {
     if (!extension_loaded('gd')) {
         http_response_code(500);
-        exit('GD extension required for CAPTCHA.');
+        exit((bool) config('debug') ? 'GD extension required for CAPTCHA.' : production_error_message());
     }
 
     $code = captcha_refresh();

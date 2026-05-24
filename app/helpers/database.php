@@ -16,7 +16,11 @@ function db(): PDO
     $cfg = require APP_PATH . '/config/database.php';
 
     if ($cfg['name'] === '') {
-        throw new RuntimeException('Database not configured. Copy .env.example to .env');
+        throw new RuntimeException(
+            (bool) config('debug')
+                ? 'Database not configured. Copy .env.example to .env'
+                : 'Database not configured.'
+        );
     }
 
     $dsn = sprintf(

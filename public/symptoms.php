@@ -25,7 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors = $result['errors'];
     } elseif ($action === 'remove') {
         $id = filter_var($_POST['id'] ?? '', FILTER_VALIDATE_INT);
-        if ($id !== false && Symptom::deactivate((int) $id)) {
+        if ($id === false || $id < 1) {
+            flash_set('error', __('symptom.error.not_found'));
+        } elseif (Symptom::isAssignedToPatient((int) $id)) {
+            flash_set('error', __('symptom.error.in_use'));
+        } elseif (Symptom::deactivate((int) $id)) {
             flash_set('success', __('symptom.delete.success'));
         } else {
             flash_set('error', __('symptom.error.not_found'));
@@ -35,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 try {
-    $symptoms = Symptom::listActive();
+    $symptoms = Symptom::listForManage();
     $dbError = false;
 } catch (Throwable) {
     $symptoms = [];

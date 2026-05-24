@@ -2,18 +2,16 @@
     'use strict';
 
     var section = document.getElementById('visitPaymentSection');
-    if (!section) {
+    var fieldsGrid = document.getElementById('visitPaymentFields');
+    if (!section || !fieldsGrid) {
         return;
     }
 
     var methodSelect = document.getElementById('visit_payment_method');
-    var statusInputs = section.querySelectorAll('.visit-payment-status-input');
+    var statusSelect = document.getElementById('visit_payment_status');
     var partialField = document.getElementById('visitPaymentPartialField');
     var paidInput = document.getElementById('visit_payment_paid_amount');
-    var zeroHint = document.getElementById('visitPaymentZeroHint');
-    var detailInputs = section.querySelectorAll('.visit-payment-detail-input');
     var requiredMarks = section.querySelectorAll('.visit-payment-required-mark');
-    var paymentFields = section.querySelectorAll('.visit-payment-method-col, .visit-payment-status-col');
 
     function parseGrandTotal() {
         var summary = document.getElementById('summaryGrandTotal');
@@ -31,10 +29,10 @@
             methodSelect.disabled = !on;
         }
 
-        statusInputs.forEach(function (input) {
-            input.required = on;
-            input.disabled = !on;
-        });
+        if (statusSelect) {
+            statusSelect.required = on;
+            statusSelect.disabled = !on;
+        }
 
         if (!on && paidInput) {
             paidInput.required = false;
@@ -48,8 +46,7 @@
             return;
         }
 
-        var selected = section.querySelector('.visit-payment-status-input:checked');
-        var isPartial = grandTotal > 0 && selected && selected.value === 'partial';
+        var isPartial = grandTotal > 0 && statusSelect && statusSelect.value === 'partial';
 
         partialField.classList.toggle('d-none', !isPartial);
         paidInput.required = isPartial;
@@ -66,15 +63,10 @@
 
         var showDetails = grandTotal > 0;
 
-        paymentFields.forEach(function (col) {
-            col.classList.toggle('d-none', !showDetails);
-        });
+        fieldsGrid.classList.toggle('visit-payment-fields--hidden', !showDetails);
         requiredMarks.forEach(function (mark) {
             mark.classList.toggle('d-none', !showDetails);
         });
-        if (zeroHint) {
-            zeroHint.classList.toggle('d-none', showDetails);
-        }
 
         setDetailRequired(showDetails);
 
@@ -88,11 +80,11 @@
         updatePartialField(grandTotal);
     }
 
-    statusInputs.forEach(function (input) {
-        input.addEventListener('change', function () {
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function () {
             updatePartialField(parseGrandTotal());
         });
-    });
+    }
 
     window.updateVisitPaymentFields = updateVisitPaymentVisibility;
 

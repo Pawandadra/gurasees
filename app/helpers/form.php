@@ -14,6 +14,7 @@ function patient_form_defaults(): array
         'address' => '',
         'delivery_address' => '',
         'delivery_same_as_address' => '',
+        'remarks' => '',
         'symptoms' => [],
     ];
 
@@ -21,24 +22,33 @@ function patient_form_defaults(): array
         load_model('PaymentSettings');
     }
 
-    if (PaymentSettings::isEnabled()) {
-        $defaults = array_merge($defaults, PaymentSettings::registrationDefaults());
-    }
+    $defaults = array_merge($defaults, PaymentSettings::registrationDefaults());
 
     return $defaults;
 }
 
-function field_invalid(array $errors, string $field): string
+function field_invalid(array $errors, string $field, array $alsoWhen = []): string
 {
-    return isset($errors[$field]) ? ' is-invalid' : '';
+    if (isset($errors[$field])) {
+        return ' is-invalid';
+    }
+
+    foreach ($alsoWhen as $key) {
+        if (isset($errors[$key])) {
+            return ' is-invalid';
+        }
+    }
+
+    return '';
 }
 
-function show_field_error(array $errors, string $field): void
+function show_field_error(array $errors, string $field, bool $requiredOnly = false): void
 {
     if (!isset($errors[$field])) {
         return;
     }
-    echo '<div class="invalid-feedback d-block">' . e($errors[$field]) . '</div>';
+    $message = $requiredOnly ? __('validation.required') : $errors[$field];
+    echo '<div class="invalid-feedback d-block">' . e($message) . '</div>';
 }
 
 /** Faded N/A placeholder for empty table cells (returns HTML). */
@@ -240,6 +250,31 @@ function patient_sort_th_attr(string $column, string $currentSort, string $curre
 function patient_dashboard_url(string $sort = 'date', string $dir = 'desc'): string
 {
     return patient_list_url('/dashboard.php', $sort, $dir);
+}
+
+/**
+ * @param array<string, scalar|null> $listFilters
+ */
+function patient_view_url(string $code, string $return = 'dashboard', string $sort = 'date', string $dir = 'desc', array $listFilters = []): string
+{
+    $query = [
+        'code' => $code,
+        'sort' => $sort,
+        'dir' => $dir,
+    ];
+
+    if ($return === 'patients') {
+        $query['return'] = 'patients';
+        $query = array_merge($query, patient_list_query_filters($listFilters));
+    } elseif ($return === 'visits') {
+        $query['return'] = 'visits';
+        if (!function_exists('visit_list_query_filters')) {
+            require_once APP_PATH . '/helpers/visits_list.php';
+        }
+        $query = array_merge($query, visit_list_query_filters($listFilters));
+    }
+
+    return base_url('/patient_view.php?' . http_build_query($query));
 }
 
 /**

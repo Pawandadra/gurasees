@@ -29,8 +29,10 @@ $editUrl = base_url('/patient_edit.php?' . http_build_query(['code' => $patientC
         <?php foreach ($actionExtra as $key => $value): ?>
             <input type="hidden" name="<?= e((string) $key) ?>" value="<?= e((string) $value) ?>">
         <?php endforeach; ?>
-        <button type="button" class="patient-action-btn patient-action-delete patient-delete-trigger"
+        <button type="button" class="patient-action-btn patient-action-delete confirm-action-trigger"
+                data-confirm-title="<?= e(__('patient.delete.confirm_title')) ?>"
                 data-confirm="<?= e(__('patient.delete.confirm', ['code' => $patientCode])) ?>"
+                data-confirm-label="<?= e(__('patient.action.delete')) ?>"
                 title="<?= e(__('patient.action.delete')) ?>" aria-label="<?= e(__('patient.action.delete')) ?>">
             <?php require BASE_PATH . '/views/partials/icons/delete.php'; ?>
         </button>

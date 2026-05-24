@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $headerSearchRole = auth_user()['role'] ?? '';
-$headerRegisterUrl = $headerSearchRole === 'receptionist'
+$headerRegisterUrl = in_array($headerSearchRole, ['receptionist', 'manager'], true)
     ? base_url('/dashboard.php#patient-register')
     : '';
 ?>

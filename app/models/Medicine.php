@@ -7,18 +7,39 @@ final class Medicine
     public const KIND_UNIT = 'unit';
     public const KIND_BULK = 'bulk';
 
+    /** @var array<string, string> */
+    private const SORT_COLUMNS = [
+        'name' => 'name',
+        'kind' => 'kind',
+        'stock' => 'stock_quantity',
+    ];
+
+    /**
+     * @return array{sort: string, dir: string}
+     */
+    public static function normalizeSort(string $sort, string $dir): array
+    {
+        $sort = strtolower($sort);
+        if (!isset(self::SORT_COLUMNS[$sort])) {
+            $sort = 'name';
+        }
+
+        $dir = strtolower($dir) === 'asc' ? 'asc' : 'desc';
+
+        return ['sort' => $sort, 'dir' => $dir];
+    }
+
     /**
      * @return list<array{id: int, name: string}>
      */
     public static function listForFilter(): array
     {
-        $stmt = db()->prepare(
+        $stmt = db()->query(
             'SELECT id, name
              FROM medicines
-             WHERE is_active = 1 AND kind = :kind
+             WHERE is_active = 1
              ORDER BY sort_order ASC, name ASC'
         );
-        $stmt->execute(['kind' => self::KIND_UNIT]);
 
         $rows = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -32,26 +53,37 @@ final class Medicine
     }
 
     /**
-     * For reception — no stock quantity exposed.
+     * For reception — unit stock and bulk liquids (qty = units; ml deducted from bulk).
      *
-     * @return list<array{id: int, name: string, unit_price: string}>
+     * @return list<array{id: int, name: string}>
      */
     public static function listForReception(): array
     {
-        $stmt = db()->prepare(
-            'SELECT id, name, unit_price
+        $stmt = db()->query(
+            'SELECT id, name, kind, portion_size_ml
              FROM medicines
-             WHERE is_active = 1 AND kind = :kind AND stock_quantity > 0
+             WHERE is_active = 1
+               AND (
+                    (kind = \'unit\' AND stock_quantity > 0)
+                    OR (
+                        kind = \'bulk\'
+                        AND portion_size_ml IS NOT NULL
+                        AND portion_size_ml > 0
+                        AND stock_quantity >= portion_size_ml
+                    )
+               )
              ORDER BY sort_order ASC, name ASC'
         );
-        $stmt->execute(['kind' => self::KIND_UNIT]);
 
         $rows = [];
         foreach ($stmt->fetchAll() as $row) {
             $rows[] = [
                 'id' => (int) $row['id'],
-                'name' => (string) $row['name'],
-                'unit_price' => self::formatPrice((float) $row['unit_price']),
+                'name' => self::receptionDisplayName(
+                    (string) $row['name'],
+                    (string) $row['kind'],
+                    $row['portion_size_ml'] !== null ? (int) $row['portion_size_ml'] : null
+                ),
             ];
         }
 
@@ -59,57 +91,42 @@ final class Medicine
     }
 
     /**
+     * @param array{q?: string, kind?: string} $filters
      * @return list<array<string, mixed>>
      */
-    public static function listForManage(): array
+    public static function listForManage(array $filters = [], string $sort = 'name', string $dir = 'asc'): array
     {
-        $stmt = db()->query(
-            'SELECT m.id, m.name, m.kind, m.unit_price, m.stock_quantity,
-                    m.bulk_source_id, m.portion_size_ml, b.name AS bulk_source_name
-             FROM medicines m
-             LEFT JOIN medicines b ON b.id = m.bulk_source_id
-             WHERE m.is_active = 1
-             ORDER BY m.kind DESC, m.sort_order ASC, m.name ASC'
-        );
+        $sortParams = self::normalizeSort($sort, $dir);
+        $orderSql = db_order_sql(self::SORT_COLUMNS, $sortParams['sort'], $sortParams['dir'], 'name');
 
-        $rows = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $kind = (string) $row['kind'];
-            $rows[] = [
-                'id' => (int) $row['id'],
-                'name' => (string) $row['name'],
-                'kind' => $kind,
-                'unit_price' => self::formatPrice((float) $row['unit_price']),
-                'stock_quantity' => (int) $row['stock_quantity'],
-                'bulk_source_id' => $row['bulk_source_id'] !== null ? (int) $row['bulk_source_id'] : null,
-                'portion_size_ml' => $row['portion_size_ml'] !== null ? (int) $row['portion_size_ml'] : null,
-                'bulk_source_name' => $row['bulk_source_name'] !== null ? (string) $row['bulk_source_name'] : null,
-                'stock_display' => self::formatStockDisplay($kind, (int) $row['stock_quantity']),
-            ];
+        $where = ['is_active = 1'];
+        $bind = [];
+
+        $q = trim((string) ($filters['q'] ?? ''));
+        if ($q !== '') {
+            $where[] = 'name LIKE :q';
+            $bind['q'] = '%' . $q . '%';
         }
 
-        return $rows;
-    }
+        $kind = strtolower(trim((string) ($filters['kind'] ?? '')));
+        if ($kind === self::KIND_UNIT || $kind === self::KIND_BULK) {
+            $where[] = 'kind = :kind';
+            $bind['kind'] = $kind;
+        }
 
-    /**
-     * @return list<array{id: int, name: string, stock_quantity: int}>
-     */
-    public static function listBulkForPortioning(): array
-    {
-        $stmt = db()->prepare(
-            'SELECT id, name, stock_quantity
-             FROM medicines
-             WHERE is_active = 1 AND kind = :kind AND stock_quantity > 0
-             ORDER BY name ASC'
-        );
-        $stmt->execute(['kind' => self::KIND_BULK]);
+        $sql = 'SELECT id, name
+                FROM medicines
+                WHERE ' . implode(' AND ', $where) . "
+                ORDER BY {$orderSql}, id ASC";
+
+        $stmt = db()->prepare($sql);
+        $stmt->execute($bind);
 
         $rows = [];
         foreach ($stmt->fetchAll() as $row) {
             $rows[] = [
                 'id' => (int) $row['id'],
                 'name' => (string) $row['name'],
-                'stock_quantity' => (int) $row['stock_quantity'],
             ];
         }
 
@@ -121,9 +138,7 @@ final class Medicine
      */
     public static function create(array $raw): array
     {
-        $type = strtolower(trim((string) ($raw['medicine_type'] ?? self::KIND_UNIT)));
-
-        return $type === self::KIND_BULK ? self::createBulk($raw) : self::createUnit($raw);
+        return self::createUnit($raw);
     }
 
     /**
@@ -132,16 +147,17 @@ final class Medicine
     private static function createUnit(array $raw): array
     {
         $name = self::normalizeName((string) ($raw['name'] ?? ''));
-        $price = self::parsePrice((string) ($raw['unit_price'] ?? ''));
-        $stock = filter_var($raw['stock_quantity'] ?? '', FILTER_VALIDATE_INT);
-        $stock = $stock !== false ? max(0, (int) $stock) : -1;
+        $stockRaw = $raw['stock_quantity'] ?? '';
+        if ($stockRaw === '' || $stockRaw === null) {
+            $stock = 0;
+        } else {
+            $stock = filter_var($stockRaw, FILTER_VALIDATE_INT);
+            $stock = $stock !== false ? max(0, (int) $stock) : -1;
+        }
 
         $errors = [];
         if (mb_strlen($name) < 2) {
             $errors['name'] = __('medicine.error.name');
-        }
-        if ($price === null || $price <= 0) {
-            $errors['unit_price'] = __('medicine.error.price');
         }
         if ($stock < 0) {
             $errors['stock_quantity'] = __('medicine.error.stock');
@@ -156,7 +172,7 @@ final class Medicine
                 return ['ok' => false, 'errors' => ['name' => __('medicine.error.duplicate')]];
             }
 
-            self::reactivate((int) $existing['id'], $price, $stock);
+            self::reactivate((int) $existing['id'], $stock);
 
             return ['ok' => true];
         }
@@ -168,226 +184,12 @@ final class Medicine
         $stmt->execute([
             'name' => $name,
             'kind' => self::KIND_UNIT,
-            'unit_price' => $price,
+            'unit_price' => 0,
             'stock_quantity' => $stock,
             'sort_order' => self::nextSortOrder(),
         ]);
 
         return ['ok' => true];
-    }
-
-    /**
-     * @return array{ok: true}|array{ok: false, errors: array<string, string>}
-     */
-    private static function createBulk(array $raw): array
-    {
-        $name = self::normalizeName((string) ($raw['name'] ?? ''));
-        $containerMl = self::parseVolumeMl($raw, 'container_ml', 'container_volume_unit');
-        $containerCount = filter_var($raw['container_count'] ?? '', FILTER_VALIDATE_INT);
-        $unitSizeMl = self::parseVolumeMl($raw, 'unit_size_ml', 'unit_size_volume_unit');
-        $containerCount = $containerCount !== false ? max(1, (int) $containerCount) : 0;
-        $totalMl = $containerMl * $containerCount;
-
-        $errors = [];
-        if (mb_strlen($name) < 2) {
-            $errors['name'] = __('medicine.error.name');
-        }
-        if ($containerMl < 1) {
-            $errors['container_ml'] = __('medicine.error.container_ml');
-        }
-        if ($containerCount < 1) {
-            $errors['container_count'] = __('medicine.error.container_count');
-        }
-        if ($unitSizeMl < 1) {
-            $errors['unit_size_ml'] = __('medicine.error.unit_size_ml');
-        }
-        if ($errors !== []) {
-            return ['ok' => false, 'errors' => $errors];
-        }
-
-        $existing = self::findByName($name);
-        if ($existing !== null && (int) $existing['is_active'] === 1) {
-            return ['ok' => false, 'errors' => ['name' => __('medicine.error.duplicate')]];
-        }
-
-        if ($existing !== null) {
-            self::reactivateBulk((int) $existing['id'], $totalMl, $unitSizeMl);
-
-            return ['ok' => true];
-        }
-
-        $stmt = db()->prepare(
-            'INSERT INTO medicines (name, kind, unit_price, stock_quantity, portion_size_ml, sort_order)
-             VALUES (:name, :kind, 0, :stock_quantity, :unit_size_ml, :sort_order)'
-        );
-        $stmt->execute([
-            'name' => $name,
-            'kind' => self::KIND_BULK,
-            'stock_quantity' => $totalMl,
-            'unit_size_ml' => $unitSizeMl,
-            'sort_order' => self::nextSortOrder(),
-        ]);
-
-        return ['ok' => true];
-    }
-
-    /**
-     * @return array{ok: true, sellable_id: int}|array{ok: false, errors: array<string, string>}
-     */
-    public static function portionFromBulk(array $raw): array
-    {
-        $bulkId = filter_var($raw['bulk_id'] ?? '', FILTER_VALIDATE_INT);
-        $portionMl = filter_var($raw['portion_ml'] ?? '', FILTER_VALIDATE_INT);
-        $bottleCount = filter_var($raw['bottle_count'] ?? '', FILTER_VALIDATE_INT);
-        $sellableName = self::normalizeName((string) ($raw['sellable_name'] ?? ''));
-        $price = self::parsePrice((string) ($raw['unit_price'] ?? ''));
-
-        $bulkId = $bulkId !== false ? (int) $bulkId : 0;
-        $portionMl = $portionMl !== false ? max(1, (int) $portionMl) : 0;
-        $bottleCount = $bottleCount !== false ? max(1, (int) $bottleCount) : 0;
-        $mlNeeded = $portionMl * $bottleCount;
-
-        $errors = [];
-        if ($bulkId < 1) {
-            $errors['bulk_id'] = __('medicine.error.bulk_required');
-        }
-        if ($portionMl < 1) {
-            $errors['portion_ml'] = __('medicine.error.portion_ml');
-        }
-        if ($bottleCount < 1) {
-            $errors['bottle_count'] = __('medicine.error.bottle_count');
-        }
-        if (mb_strlen($sellableName) < 2) {
-            $errors['sellable_name'] = __('medicine.error.sellable_name');
-        }
-        if ($price === null || $price <= 0) {
-            $errors['portion_unit_price'] = __('medicine.error.price');
-        }
-        if ($errors !== []) {
-            return ['ok' => false, 'errors' => $errors];
-        }
-
-        $bulk = self::findBulkById($bulkId);
-        if ($bulk === null) {
-            return ['ok' => false, 'errors' => ['bulk_id' => __('medicine.error.bulk_not_found')]];
-        }
-        if ($mlNeeded > $bulk['stock_quantity']) {
-            return [
-                'ok' => false,
-                'errors' => [
-                    'bottle_count' => __('medicine.error.bulk_insufficient', [
-                        'available' => self::formatVolumeMl($bulk['stock_quantity']),
-                        'needed' => self::formatVolumeMl($mlNeeded),
-                    ]),
-                ],
-            ];
-        }
-
-        $pdo = db();
-        try {
-            $pdo->beginTransaction();
-
-            $sellable = self::findSellableByBulkAndPortion($bulkId, $portionMl);
-            if ($sellable !== null) {
-                $sellableId = (int) $sellable['id'];
-                $stmt = $pdo->prepare(
-                    'UPDATE medicines
-                     SET stock_quantity = stock_quantity + :add, unit_price = :price
-                     WHERE id = :id AND kind = :kind'
-                );
-                $stmt->execute([
-                    'add' => $bottleCount,
-                    'price' => $price,
-                    'id' => $sellableId,
-                    'kind' => self::KIND_UNIT,
-                ]);
-            } else {
-                $existing = self::findByName($sellableName);
-                if ($existing !== null && (int) $existing['is_active'] === 1) {
-                    $pdo->rollBack();
-
-                    return ['ok' => false, 'errors' => ['sellable_name' => __('medicine.error.duplicate')]];
-                }
-
-                if ($existing !== null) {
-                    $sellableId = (int) $existing['id'];
-                    $stmt = $pdo->prepare(
-                        'UPDATE medicines
-                         SET is_active = 1, kind = :kind, unit_price = :price,
-                             stock_quantity = stock_quantity + :add,
-                             bulk_source_id = :bulk_id, portion_size_ml = :portion_ml,
-                             sort_order = :sort_order
-                         WHERE id = :id'
-                    );
-                    $stmt->execute([
-                        'kind' => self::KIND_UNIT,
-                        'price' => $price,
-                        'add' => $bottleCount,
-                        'bulk_id' => $bulkId,
-                        'portion_ml' => $portionMl,
-                        'sort_order' => self::nextSortOrder(),
-                        'id' => $sellableId,
-                    ]);
-                } else {
-                    $stmt = $pdo->prepare(
-                        'INSERT INTO medicines (name, kind, unit_price, stock_quantity, bulk_source_id, portion_size_ml, sort_order)
-                         VALUES (:name, :kind, :price, :stock, :bulk_id, :portion_ml, :sort_order)'
-                    );
-                    $stmt->execute([
-                        'name' => $sellableName,
-                        'kind' => self::KIND_UNIT,
-                        'price' => $price,
-                        'stock' => $bottleCount,
-                        'bulk_id' => $bulkId,
-                        'portion_ml' => $portionMl,
-                        'sort_order' => self::nextSortOrder(),
-                    ]);
-                    $sellableId = (int) $pdo->lastInsertId();
-                }
-            }
-
-            $deduct = $pdo->prepare(
-                'UPDATE medicines
-                 SET stock_quantity = stock_quantity - :deduct
-                 WHERE id = :id AND kind = :kind AND stock_quantity >= :min_ml'
-            );
-            $deduct->execute([
-                'deduct' => $mlNeeded,
-                'id' => $bulkId,
-                'kind' => self::KIND_BULK,
-                'min_ml' => $mlNeeded,
-            ]);
-            if ($deduct->rowCount() === 0) {
-                $pdo->rollBack();
-
-                return ['ok' => false, 'errors' => ['bottle_count' => __('medicine.error.bulk_insufficient_short')]];
-            }
-
-            $userId = self::currentUserId();
-            $log = $pdo->prepare(
-                'INSERT INTO medicine_portion_logs
-                    (bulk_medicine_id, sellable_medicine_id, portion_size_ml, bottles_created, ml_used, created_by)
-                 VALUES (:bulk_id, :sellable_id, :portion_ml, :bottles, :ml_used, :uid)'
-            );
-            $log->execute([
-                'bulk_id' => $bulkId,
-                'sellable_id' => $sellableId,
-                'portion_ml' => $portionMl,
-                'bottles' => $bottleCount,
-                'ml_used' => $mlNeeded,
-                'uid' => $userId > 0 ? $userId : null,
-            ]);
-
-            $pdo->commit();
-
-            return ['ok' => true, 'sellable_id' => $sellableId];
-        } catch (Throwable) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-
-            return ['ok' => false, 'errors' => ['_form' => __('medicine.error.portion_failed')]];
-        }
     }
 
     public static function deactivate(int $id): bool
@@ -403,21 +205,64 @@ final class Medicine
     }
 
     /**
-     * @return array{id: int, name: string, unit_price: float, stock_quantity: int}|null
+     * @return array{ok: true}|array{ok: false, errors: array<string, string>}
      */
-    public static function findActiveById(int $id): ?array
+    public static function updateName(int $id, array $raw): array
+    {
+        $medicine = self::findManageById($id);
+        if ($medicine === null) {
+            return ['ok' => false, 'errors' => ['_form' => __('medicine.error.not_found')]];
+        }
+
+        $name = self::normalizeName((string) ($raw['name'] ?? ''));
+        $errors = [];
+        if (mb_strlen($name) < 2) {
+            $errors['name'] = __('medicine.error.name');
+        }
+        if ($errors !== []) {
+            return ['ok' => false, 'errors' => $errors];
+        }
+
+        if ($name === $medicine['name']) {
+            return ['ok' => true];
+        }
+
+        $existing = self::findByName($name);
+        if ($existing !== null && (int) $existing['id'] !== $id) {
+            return ['ok' => false, 'errors' => ['name' => __('medicine.error.duplicate')]];
+        }
+
+        $stmt = db()->prepare(
+            'UPDATE medicines SET name = :name WHERE id = :id AND is_active = 1'
+        );
+        $stmt->execute([
+            'name' => $name,
+            'id' => $id,
+        ]);
+
+        if ($stmt->rowCount() === 0) {
+            return ['ok' => false, 'errors' => ['_form' => __('medicine.error.not_found')]];
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    public static function findManageById(int $id): ?array
     {
         if ($id < 1) {
             return null;
         }
 
         $stmt = db()->prepare(
-            'SELECT id, name, unit_price, stock_quantity
+            'SELECT id, name
              FROM medicines
-             WHERE id = :id AND is_active = 1 AND kind = :kind
+             WHERE id = :id AND is_active = 1
              LIMIT 1'
         );
-        $stmt->execute(['id' => $id, 'kind' => self::KIND_UNIT]);
+        $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
         if ($row === false) {
@@ -427,14 +272,18 @@ final class Medicine
         return [
             'id' => (int) $row['id'],
             'name' => (string) $row['name'],
-            'unit_price' => (float) $row['unit_price'],
-            'stock_quantity' => (int) $row['stock_quantity'],
         ];
     }
 
     /**
      * @param list<int> $ids
-     * @return array<int, array{id: int, name: string, unit_price: float, stock_quantity: int}>
+     * @return array<int, array{
+     *     id: int,
+     *     name: string,
+     *     kind: string,
+     *     stock_quantity: int,
+     *     portion_size_ml: int|null
+     * }>
      */
     public static function findActiveByIds(array $ids): array
     {
@@ -447,9 +296,11 @@ final class Medicine
         }
 
         $map = [];
-        $sql = 'SELECT id, name, unit_price, stock_quantity
+        $sql = 'SELECT id, name, kind, stock_quantity, portion_size_ml
                 FROM medicines
-                WHERE is_active = 1 AND kind = \'unit\' AND id IN (%s)';
+                WHERE is_active = 1
+                  AND id IN (%s)
+                  AND (kind = \'unit\' OR kind = \'bulk\')';
 
         foreach (array_chunk($ids, 100) as $chunk) {
             $stmt = db()->prepare(sprintf($sql, db_sql_in_placeholders(count($chunk))));
@@ -460,8 +311,9 @@ final class Medicine
                 $map[$id] = [
                     'id' => $id,
                     'name' => (string) $row['name'],
-                    'unit_price' => (float) $row['unit_price'],
+                    'kind' => (string) $row['kind'],
                     'stock_quantity' => (int) $row['stock_quantity'],
+                    'portion_size_ml' => $row['portion_size_ml'] !== null ? (int) $row['portion_size_ml'] : null,
                 ];
             }
         }
@@ -469,67 +321,13 @@ final class Medicine
         return $map;
     }
 
-    /** @return array{id: int, name: string, stock_quantity: int}|null */
-    private static function findBulkById(int $id): ?array
+    private static function receptionDisplayName(string $name, string $kind, ?int $portionMl): string
     {
-        $stmt = db()->prepare(
-            'SELECT id, name, stock_quantity
-             FROM medicines
-             WHERE id = :id AND is_active = 1 AND kind = :kind
-             LIMIT 1'
-        );
-        $stmt->execute(['id' => $id, 'kind' => self::KIND_BULK]);
-        $row = $stmt->fetch();
-
-        if ($row === false) {
-            return null;
+        if ($kind === self::KIND_BULK && $portionMl !== null && $portionMl > 0) {
+            return $name . ' · ' . self::formatVolumeMl($portionMl) . '/unit';
         }
 
-        return [
-            'id' => (int) $row['id'],
-            'name' => (string) $row['name'],
-            'stock_quantity' => (int) $row['stock_quantity'],
-        ];
-    }
-
-    /**
-     * @return array{id: int, name: string}|null
-     */
-    private static function findSellableByBulkAndPortion(int $bulkId, int $portionMl): ?array
-    {
-        $stmt = db()->prepare(
-            'SELECT id, name
-             FROM medicines
-             WHERE is_active = 1 AND kind = :kind
-               AND bulk_source_id = :bulk_id AND portion_size_ml = :portion_ml
-             LIMIT 1'
-        );
-        $stmt->execute([
-            'kind' => self::KIND_UNIT,
-            'bulk_id' => $bulkId,
-            'portion_ml' => $portionMl,
-        ]);
-        $row = $stmt->fetch();
-
-        return $row !== false
-            ? ['id' => (int) $row['id'], 'name' => (string) $row['name']]
-            : null;
-    }
-
-    public static function kindLabel(string $kind): string
-    {
-        return $kind === self::KIND_BULK
-            ? __('medicine.kind.bulk')
-            : __('medicine.kind.unit');
-    }
-
-    public static function formatStockDisplay(string $kind, int $stock): string
-    {
-        if ($kind === self::KIND_BULK) {
-            return self::formatVolumeMl($stock);
-        }
-
-        return (string) $stock;
+        return $name;
     }
 
     public static function formatVolumeMl(int $ml): string
@@ -541,44 +339,14 @@ final class Medicine
         return number_format($ml) . ' ml';
     }
 
-    public static function formatPortionHint(int $portionMl): string
-    {
-        return __('medicine.portion.size_label', ['size' => self::formatVolumeMl($portionMl)]);
-    }
-
-    private static function reactivateBulk(int $id, int $totalMl, int $unitSizeMl): void
-    {
-        $stmt = db()->prepare(
-            'UPDATE medicines
-             SET is_active = 1, kind = :kind, unit_price = 0,
-                 stock_quantity = stock_quantity + :add_ml, portion_size_ml = :unit_size_ml,
-                 bulk_source_id = NULL, sort_order = :sort_order
-             WHERE id = :id'
-        );
-        $stmt->execute([
-            'kind' => self::KIND_BULK,
-            'add_ml' => $totalMl,
-            'unit_size_ml' => $unitSizeMl,
-            'sort_order' => self::nextSortOrder(),
-            'id' => $id,
-        ]);
-    }
-
-    private static function currentUserId(): ?int
-    {
-        $user = auth_user();
-
-        return isset($user['id']) ? (int) $user['id'] : null;
-    }
-
     /**
      * @param list<array{medicine_id: int, quantity: int}> $lines
-     * @return array{ok: true, total: float}|array{ok: false, errors: array<string, string>}
+     * @return array{ok: true}|array{ok: false, errors: array<string, string>}
      */
     public static function validateVisitLines(array $lines): array
     {
         if ($lines === []) {
-            return ['ok' => true, 'total' => 0.0];
+            return ['ok' => true];
         }
 
         $aggregated = [];
@@ -596,12 +364,34 @@ final class Medicine
         }
 
         $catalog = self::findActiveByIds(array_keys($aggregated));
-        $total = 0.0;
         foreach ($aggregated as $medicineId => $qty) {
             $medicine = $catalog[$medicineId] ?? null;
             if ($medicine === null) {
                 return ['ok' => false, 'errors' => ['medicines' => __('medicine.error.unavailable')]];
             }
+
+            if ((string) $medicine['kind'] === self::KIND_BULK) {
+                $portionMl = (int) ($medicine['portion_size_ml'] ?? 0);
+                if ($portionMl < 1) {
+                    return ['ok' => false, 'errors' => ['medicines' => __('medicine.error.unavailable')]];
+                }
+                $neededMl = $qty * $portionMl;
+                $availableMl = (int) $medicine['stock_quantity'];
+                if ($neededMl > $availableMl) {
+                    return [
+                        'ok' => false,
+                        'errors' => [
+                            'medicines' => __('medicine.error.bulk_insufficient_ml', [
+                                'name' => $medicine['name'],
+                                'needed' => self::formatVolumeMl($neededMl),
+                                'available' => self::formatVolumeMl($availableMl),
+                            ]),
+                        ],
+                    ];
+                }
+                continue;
+            }
+
             if ($qty > $medicine['stock_quantity']) {
                 return [
                     'ok' => false,
@@ -610,19 +400,57 @@ final class Medicine
                     ],
                 ];
             }
-            $total += $qty * $medicine['unit_price'];
         }
 
-        return ['ok' => true, 'total' => round($total, 2)];
+        return ['ok' => true];
     }
 
     /**
      * @param list<array{medicine_id: int, quantity: int}> $lines
      */
-    public static function attachToVisit(int $visitId, array $lines): float
+    public static function restoreVisitStock(int $visitId): void
+    {
+        if ($visitId < 1) {
+            return;
+        }
+
+        $stmt = db()->prepare(
+            'SELECT vm.medicine_id, vm.quantity, m.kind, m.portion_size_ml
+             FROM visit_medicines vm
+             INNER JOIN medicines m ON m.id = vm.medicine_id
+             WHERE vm.visit_id = :vid'
+        );
+        $stmt->execute(['vid' => $visitId]);
+
+        $restoreUnit = db()->prepare(
+            'UPDATE medicines SET stock_quantity = stock_quantity + :add WHERE id = :id'
+        );
+
+        foreach ($stmt->fetchAll() as $row) {
+            $medicineId = (int) $row['medicine_id'];
+            $qty = (int) $row['quantity'];
+            if ($medicineId < 1 || $qty < 1) {
+                continue;
+            }
+
+            $add = (string) $row['kind'] === self::KIND_BULK
+                ? $qty * max(1, (int) ($row['portion_size_ml'] ?? 0))
+                : $qty;
+
+            $restoreUnit->execute([
+                'add' => $add,
+                'id' => $medicineId,
+            ]);
+        }
+    }
+
+    /**
+     * @param list<array{medicine_id: int, quantity: int}> $lines
+     */
+    public static function attachToVisit(int $visitId, array $lines): void
     {
         if ($visitId < 1 || $lines === []) {
-            return 0.0;
+            return;
         }
 
         $aggregated = [];
@@ -633,21 +461,32 @@ final class Medicine
                 continue;
             }
             $courierQty = min($qty, max(0, (int) ($line['courier_quantity'] ?? 0)));
-            $aggregated[$id] = [
-                'quantity' => $qty,
-                'courier_quantity' => $courierQty,
-            ];
+            if (!isset($aggregated[$id])) {
+                $aggregated[$id] = ['quantity' => 0, 'courier_quantity' => 0];
+            }
+            $aggregated[$id]['quantity'] += $qty;
+            $aggregated[$id]['courier_quantity'] += $courierQty;
+        }
+
+        foreach ($aggregated as $medicineId => $line) {
+            $aggregated[$medicineId]['courier_quantity'] = min(
+                (int) $line['quantity'],
+                (int) $line['courier_quantity']
+            );
         }
 
         $pdo = db();
-        $total = 0.0;
         $catalog = self::findActiveByIds(array_keys($aggregated));
 
         $ins = $pdo->prepare(
             'INSERT INTO visit_medicines (visit_id, medicine_id, quantity, unit_price, line_total, courier_quantity)
-             VALUES (:visit_id, :medicine_id, :quantity, :unit_price, :line_total, :courier_quantity)'
+             VALUES (:visit_id, :medicine_id, :quantity, 0, 0, :courier_quantity)'
         );
-        $deduct = $pdo->prepare(
+        $deductUnit = $pdo->prepare(
+            'UPDATE medicines SET stock_quantity = stock_quantity - :deduct
+             WHERE id = :id AND kind = :kind AND stock_quantity >= :min_stock'
+        );
+        $deductBulk = $pdo->prepare(
             'UPDATE medicines SET stock_quantity = stock_quantity - :deduct
              WHERE id = :id AND kind = :kind AND stock_quantity >= :min_stock'
         );
@@ -656,31 +495,44 @@ final class Medicine
             $qty = (int) $line['quantity'];
             $medicine = $catalog[$medicineId] ?? null;
             if ($medicine === null) {
-                continue;
+                throw new RuntimeException('Medicine unavailable');
             }
-
-            $unitPrice = (float) $medicine['unit_price'];
-            $lineTotal = round($qty * $unitPrice, 2);
-            $total += $lineTotal;
 
             $ins->execute([
                 'visit_id' => $visitId,
                 'medicine_id' => $medicineId,
                 'quantity' => $qty,
-                'unit_price' => $unitPrice,
-                'line_total' => $lineTotal,
                 'courier_quantity' => (int) $line['courier_quantity'],
             ]);
 
-            $deduct->execute([
+            if ((string) $medicine['kind'] === self::KIND_BULK) {
+                $portionMl = (int) ($medicine['portion_size_ml'] ?? 0);
+                if ($portionMl < 1) {
+                    throw new RuntimeException('Invalid bulk portion');
+                }
+                $deductMl = $qty * $portionMl;
+                $deductBulk->execute([
+                    'deduct' => $deductMl,
+                    'id' => $medicineId,
+                    'kind' => self::KIND_BULK,
+                    'min_stock' => $deductMl,
+                ]);
+                if ($deductBulk->rowCount() === 0) {
+                    throw new RuntimeException('Bulk stock deduct failed');
+                }
+                continue;
+            }
+
+            $deductUnit->execute([
                 'deduct' => $qty,
                 'id' => $medicineId,
                 'kind' => self::KIND_UNIT,
                 'min_stock' => $qty,
             ]);
+            if ($deductUnit->rowCount() === 0) {
+                throw new RuntimeException('Unit stock deduct failed');
+            }
         }
-
-        return round($total, 2);
     }
 
     public static function formatPrice(float $price): string
@@ -700,32 +552,6 @@ final class Medicine
         return mb_substr($name, 0, 120);
     }
 
-    private static function parseVolumeMl(array $raw, string $valueKey, string $unitKey): int
-    {
-        $value = trim((string) ($raw[$valueKey] ?? ''));
-        if ($value === '' || !is_numeric($value)) {
-            return 0;
-        }
-
-        $amount = (float) $value;
-        $unit = strtolower(trim((string) ($raw[$unitKey] ?? 'ml')));
-        if (in_array($unit, ['l', 'litre', 'liter', 'litres', 'liters'], true)) {
-            return max(1, (int) round($amount * 1000));
-        }
-
-        return max(1, (int) round($amount));
-    }
-
-    private static function parsePrice(string $value): ?float
-    {
-        $value = trim(str_replace(',', '', $value));
-        if ($value === '' || !is_numeric($value)) {
-            return null;
-        }
-
-        return round((float) $value, 2);
-    }
-
     /**
      * @return array{id: int, is_active: int}|null
      */
@@ -738,19 +564,18 @@ final class Medicine
         return $row !== false ? ['id' => (int) $row['id'], 'is_active' => (int) $row['is_active']] : null;
     }
 
-    private static function reactivate(int $id, float $price, int $stock): void
+    private static function reactivate(int $id, int $stock): void
     {
         $stmt = db()->prepare(
             'UPDATE medicines
-             SET is_active = 1, kind = :kind, unit_price = :unit_price,
-                 stock_quantity = :stock_quantity, bulk_source_id = NULL, portion_size_ml = NULL,
+             SET is_active = 1, kind = :kind, unit_price = 0,
+                 stock_quantity = :stock_quantity, portion_size_ml = NULL,
                  sort_order = :sort_order
              WHERE id = :id'
         );
         $stmt->execute([
             'id' => $id,
             'kind' => self::KIND_UNIT,
-            'unit_price' => $price,
             'stock_quantity' => $stock,
             'sort_order' => self::nextSortOrder(),
         ]);

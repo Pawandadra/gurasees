@@ -17,6 +17,7 @@
     var debounceTimer = null;
     var activeIndex = -1;
     var items = [];
+    var searchAbort = null;
 
     function hideResults() {
         resultsEl.hidden = true;
@@ -103,10 +104,16 @@
     }
 
     function fetchResults(query) {
+        if (searchAbort) {
+            searchAbort.abort();
+        }
+        searchAbort = new AbortController();
+
         var url = searchUrl + '?q=' + encodeURIComponent(query);
         fetch(url, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
+            signal: searchAbort.signal,
         })
             .then(function (response) {
                 if (!response.ok) {
@@ -117,7 +124,10 @@
             .then(function (data) {
                 renderResults(data.results || []);
             })
-            .catch(function () {
+            .catch(function (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
                 hideResults();
             });
     }
@@ -129,6 +139,8 @@
         });
         activeIndex = index;
     }
+
+    wrap.addEventListener('search-dropdown:close', hideResults);
 
     input.addEventListener('focus', function () {
         if (input.value.trim().length < 2) {
@@ -177,12 +189,6 @@
                 window.location.href = target.href;
             }
         } else if (event.key === 'Escape') {
-            hideResults();
-        }
-    });
-
-    document.addEventListener('click', function (event) {
-        if (!wrap.contains(event.target)) {
             hideResults();
         }
     });

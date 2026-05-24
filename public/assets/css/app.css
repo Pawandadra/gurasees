@@ -9,17 +9,10 @@
   --gaa-muted: #5c6f6a;
 }
 
-html[lang="pa"] {
-  font-size: calc(100% + 0.5px);
-}
-
-html[lang="pa"] body {
-  font-family: "Noto Sans Gurmukhi", "Nirmala UI", system-ui, sans-serif;
-}
-
 /* Dashboard */
 .reception-body {
   background: var(--gaa-cream);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Gurmukhi", "Nirmala UI", sans-serif;
   min-height: 100vh;
 }
 
@@ -289,6 +282,7 @@ html[lang="pa"] body {
 
 .page-header-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }
@@ -319,8 +313,93 @@ html[lang="pa"] body {
   color: var(--gaa-teal-dark);
 }
 
-.patient-profile-card {
-  padding: 1rem 1.25rem;
+.patient-register-success-body {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gaa-teal-dark);
+}
+
+.patient-view-page .reception-card {
+  padding: 0.875rem 1rem;
+}
+
+.patient-view-page .page-header-bar {
+  margin-bottom: 0.75rem;
+}
+
+.patient-view-total-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  border: 1px solid rgba(13, 92, 77, 0.12);
+}
+
+.patient-view-total-balance-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(13, 92, 77, 0.65);
+}
+
+.patient-view-total-balance-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gaa-teal-dark);
+}
+
+.patient-view-total-balance--due .patient-view-total-balance-value {
+  color: #b45309;
+}
+
+.patient-view-total-balance--due {
+  border-color: rgba(180, 83, 9, 0.25);
+  background: #fffbeb;
+}
+
+.patient-view-page .patient-profile-card {
+  margin-bottom: 0.5rem;
+}
+
+.patient-profile-card .patient-detail-list {
+  margin: 0;
+}
+
+.patient-profile-card .patient-detail-item {
+  display: grid;
+  grid-template-columns: minmax(6rem, 7.5rem) 1fr;
+  gap: 0.2rem 0.5rem;
+  align-items: baseline;
+  margin-bottom: 0.45rem;
+}
+
+.patient-profile-card .patient-detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.patient-profile-card .patient-detail-list dt {
+  font-weight: 500;
+  color: var(--gaa-muted);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.patient-profile-card .patient-detail-list dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: var(--gaa-text);
+}
+
+.patient-profile-card .patient-detail-grid .patient-symptoms-item {
+  align-items: start;
 }
 
 .patient-detail-list {
@@ -359,39 +438,67 @@ html[lang="pa"] body {
   align-items: start;
 }
 
-/* Symptoms — full-width row, wraps as options are added */
-.symptoms-checkbox-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.5rem 1.5rem;
-  width: 100%;
+/* Patient symptom picker — search left, selected list right */
+.patient-symptom-picker-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
 }
 
-.symptoms-checkbox-row .form-check {
-  margin: 0;
-  padding-left: 1.65em;
-  flex: 0 0 auto;
+.patient-symptom-search-col {
+  min-width: 0;
 }
 
-.symptoms-checkbox-row .form-check-label {
+.patient-symptom-search .visit-medicine-search-results.patient-symptom-results-panel {
+  position: static;
+  left: auto;
+  right: auto;
+  margin-top: 0.5rem;
+  max-height: 14rem;
+  border-radius: 0.375rem;
+  box-shadow: none;
+}
+
+.patient-symptom-list-col {
+  min-width: 0;
+  min-height: 14rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(13, 92, 77, 0.12);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.patient-symptom-list {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.patient-symptom-list-label {
   font-size: 0.9rem;
 }
 
-.symptoms-preview-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.5rem;
+.patient-symptom-list-item {
+  padding: 0.45rem 0.75rem;
+  border-color: rgba(13, 92, 77, 0.12);
 }
 
-.symptom-tag {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.85rem;
-  background: var(--gaa-teal-light);
-  color: var(--gaa-teal-dark);
-  border-radius: 0.35rem;
-  border: 1px solid rgba(13, 92, 77, 0.12);
+.patient-symptom-list-item + .patient-symptom-list-item {
+  border-top-width: 1px;
+}
+
+@media (max-width: 767.98px) {
+  .patient-symptom-picker-body {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-symptom-list-col {
+    min-height: 0;
+  }
+}
+
+.symptom-add-fields .col-auto {
+  padding-top: 0;
 }
 
 .symptom-manage-list {
@@ -422,81 +529,115 @@ html[lang="pa"] body {
   flex-shrink: 0;
 }
 
+.symptom-in-use-hint {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  max-width: 11rem;
+  text-align: right;
+  line-height: 1.3;
+}
+
 .payment-status-group .btn {
   font-size: 0.75rem;
   padding: 0.375rem 0.4rem;
 }
 
-.patient-payment-row {
+.payment-section-heading {
+  font-weight: 600;
+  color: var(--gaa-teal-dark);
+}
+
+.payment-fields-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1rem 1.25rem;
+  gap: 0.75rem 1rem;
   align-items: start;
-  width: 100%;
 }
 
-.patient-payment-row:has(.payment-detail-col:not(.d-none)) {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.patient-payment-field {
+.payment-field {
   min-width: 0;
 }
 
-.patient-payment-field .form-label {
-  display: block;
+.payment-field .form-label {
+  margin-bottom: 0.35rem;
 }
 
-.patient-payment-control {
-  min-height: 2.5rem;
-}
-
-.patient-payment-control .input-group,
-.patient-payment-control .form-select,
-.patient-payment-control .payment-status-group {
-  width: 100%;
-  height: 100%;
-  min-height: 2.5rem;
-}
-
-.patient-payment-control .input-group .form-control {
-  min-height: 2.5rem;
-}
-
-.patient-payment-status-col .payment-status-group {
+.patient-payment-row .payment-field-body {
   display: flex;
-  flex-wrap: nowrap;
+  flex-direction: column;
 }
 
-.patient-payment-status-col .payment-status-group .btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.patient-payment-row .payment-field-control {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: stretch;
 }
 
-.patient-payment-meta {
-  min-height: 1.25rem;
-  margin-top: 0.25rem;
+.patient-payment-row .payment-field-control > .input-group,
+.patient-payment-row .payment-field-control > .form-select,
+.patient-payment-row .payment-field-control > .payment-status-group {
+  width: 100%;
+}
+
+.patient-payment-row .payment-field-meta {
+  min-height: 1.35rem;
+  margin-top: 0.35rem;
   line-height: 1.35;
 }
 
-.patient-payment-meta--spacer {
+.patient-payment-row .payment-field-meta--spacer {
   visibility: hidden;
+  pointer-events: none;
+}
+
+.patient-payment-row .payment-gst-summary {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.payment-field--status .payment-status-group {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.payment-field--status .payment-status-group .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
 }
 
 .payment-gst-summary {
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0.35rem 0 0;
+  line-height: 1.35;
+}
+
+.visit-payment-fields {
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+
+.visit-payment-fields--hidden {
+  display: none;
+}
+
+.visit-payment-fields .payment-field--partial .input-group {
+  max-width: 10rem;
 }
 
 @media (max-width: 767.98px) {
-  .patient-payment-row {
+  .visit-payment-fields {
     grid-template-columns: 1fr;
+  }
+
+  .patient-payment-row .payment-field-meta--spacer {
+    display: none;
+  }
+
+  .patient-payment-row .payment-gst-summary {
+    white-space: normal;
+  }
+
+  .visit-payment-fields .payment-field--partial .input-group {
+    max-width: none;
   }
 }
 
@@ -583,12 +724,24 @@ html[lang="pa"] body {
 
 @media (max-width: 767.98px) {
   .patient-list-filters-row,
-  .visit-list-filters-row {
+  .visit-list-filters-row,
+  .medicine-list-filters-row,
+  .courier-list-filters-row {
     grid-template-columns: 1fr;
   }
 
   .patient-list-filter-actions {
     justify-content: flex-start;
+  }
+
+  .courier-list-filters .patient-list-filter-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .courier-list-filters .patient-list-filter-actions .btn {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 }
 
@@ -632,13 +785,26 @@ html[lang="pa"] body {
 /* Patient form row 1 */
 .patient-row-1 {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) 5.5rem minmax(0, 1.35fr) minmax(0, 1.5fr);
+  grid-template-columns: minmax(0, 2fr) 5.5rem 4.75rem minmax(0, 1fr);
   gap: 1rem 1.25rem;
-  align-items: end;
+  align-items: start;
+}
+
+.patient-field-gender .patient-gender-input {
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
 }
 
 .patient-field {
   min-width: 0;
+}
+
+.patient-field .invalid-feedback.d-block {
+  margin-top: 0.25rem;
 }
 
 .patient-field .form-label {
@@ -706,9 +872,13 @@ html[lang="pa"] body {
   border-color: var(--bs-form-invalid-border-color, #dc3545);
 }
 
+.reception-form .invalid-feedback.d-block {
+  color: var(--bs-form-invalid-color, #dc3545);
+}
+
 @media (max-width: 1199.98px) {
   .patient-row-1 {
-    grid-template-columns: 5.5rem minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-columns: 5.5rem 4.75rem minmax(0, 1fr);
   }
 
   .patient-field-name {
@@ -733,6 +903,15 @@ html[lang="pa"] body {
   background: var(--gaa-teal-dark);
   border-color: var(--gaa-teal-dark);
   color: #fff;
+}
+
+.btn-reception-primary:focus,
+.btn-reception-primary:focus-visible,
+.btn-reception-primary:active {
+  background-color: var(--gaa-teal-dark) !important;
+  border-color: var(--gaa-teal-dark) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 0.2rem rgba(13, 92, 77, 0.3);
 }
 
 .reception-success {
@@ -981,6 +1160,7 @@ body.sidebar-open {
 .auth-body {
   min-height: 100vh;
   background: linear-gradient(160deg, var(--gaa-cream) 0%, #e8f0ed 50%, var(--gaa-teal-light) 100%);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Gurmukhi", "Nirmala UI", sans-serif;
 }
 
 .auth-main {
@@ -1016,6 +1196,121 @@ body.sidebar-open {
 /* Visit log form */
 .visit-records-card .visit-log-form {
   margin-bottom: 0;
+}
+
+.visit-records-card-head {
+  width: 100%;
+}
+
+#patientVisitModal .patient-visit-modal-body {
+  padding-top: 0.25rem;
+}
+
+#patientVisitModal .visit-billing-layout {
+  margin-bottom: 0;
+}
+
+#patientVisitModal .patient-visit-billing-row {
+  --patient-visit-col-gap: 1rem;
+}
+
+#patientVisitModal .patient-visit-medicines-col .visit-form-panel {
+  min-height: 320px;
+}
+
+#patientVisitModal .patient-visit-charges-col .visit-summary-panel {
+  height: 100%;
+  min-height: 320px;
+  position: sticky;
+  top: 0;
+  box-shadow: none;
+  margin-top: 0;
+}
+
+@media (max-width: 767.98px) {
+  #patientVisitModal .patient-visit-charges-col .visit-summary-panel {
+    position: static;
+    min-height: 0;
+  }
+}
+
+#patientVisitModal .visit-billing-summary-row--detail {
+  font-size: 0.8125rem;
+  color: #6c757d;
+}
+
+#patientVisitModal .visit-billing-summary-row--detail dt,
+#patientVisitModal .visit-billing-summary-row--detail dd {
+  font-weight: 400;
+}
+
+#patientVisitModal .visit-billing-visit-charge-input-row .visit-visit-charge-input,
+#patientVisitModal .visit-medicine-total-input,
+#patientVisitModal .visit-courier-charge-input {
+  width: 8.5rem;
+}
+
+#patientVisitModal .visit-billing-summary-total {
+  background: rgba(13, 92, 77, 0.06);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.5rem;
+  border-top: none;
+}
+
+#patientVisitModal .visit-payment-section {
+  margin-top: 0.75rem !important;
+  padding-top: 0.75rem !important;
+}
+
+#patientVisitModal .patient-visit-details-panel {
+  padding: 0.85rem 1rem;
+}
+
+.patient-visit-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(13, 92, 77, 0.04);
+  border-top: 1px solid rgba(13, 92, 77, 0.1);
+}
+
+.patient-visit-footer-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.patient-visit-footer-total-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6c757d;
+}
+
+.patient-visit-footer-total-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--gaa-teal-dark, #0d5c4d);
+  line-height: 1.2;
+}
+
+.patient-visit-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.visit-history-block--standalone {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .visit-form-section {
@@ -1133,6 +1428,453 @@ body.sidebar-open {
   white-space: nowrap;
 }
 
+.courier-actions .patient-action-dispatch:hover {
+  background: var(--gaa-teal-light);
+  color: var(--gaa-teal-dark);
+}
+
+.courier-actions .patient-action-cancel:hover {
+  background: rgba(220, 53, 69, 0.12);
+  color: #b02a37;
+}
+
+.courier-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.courier-status-pending {
+  background: rgba(255, 193, 7, 0.18);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.45);
+}
+
+.courier-status-sent {
+  background: rgba(13, 92, 77, 0.12);
+  color: var(--gaa-teal-dark);
+  border: 1px solid rgba(13, 92, 77, 0.2);
+}
+
+.courier-status-canceled {
+  background: rgba(108, 117, 125, 0.14);
+  color: #495057;
+  border: 1px solid rgba(108, 117, 125, 0.35);
+}
+
+.payment-summary-card {
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(13, 92, 77, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  height: 100%;
+}
+
+.payment-summary-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6c757d;
+  margin: 0;
+}
+
+.payment-summary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gaa-teal-dark);
+  line-height: 1.2;
+}
+
+.payment-summary-paid {
+  border-color: rgba(13, 92, 77, 0.2);
+}
+
+.payment-summary-pending {
+  border-color: rgba(255, 193, 7, 0.45);
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.payment-summary-partial {
+  border-color: rgba(13, 110, 253, 0.25);
+  background: rgba(13, 110, 253, 0.06);
+}
+
+.payment-summary-outstanding .payment-summary-value {
+  color: #b45309;
+}
+
+.payment-period-toggle {
+  width: auto;
+  flex-wrap: wrap;
+}
+
+/* Reports */
+.reports-page .reports-page-title {
+  font-size: 1.35rem;
+}
+
+.report-type-pills .nav-link {
+  border-radius: 999px;
+  color: var(--gaa-teal-dark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+}
+
+.report-type-pills .nav-link.active {
+  background: var(--gaa-teal);
+  color: #fff;
+}
+
+.report-toolbar-card {
+  padding: 0.65rem 0.85rem;
+}
+
+.report-period-toggle .btn {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.55rem;
+}
+
+.report-metric-card .payment-summary-value {
+  font-size: 1.1rem;
+}
+
+.reports-page .reception-card {
+  padding: 0.75rem 0.9rem;
+}
+
+.reports-page .reception-card-title {
+  font-size: 0.7rem;
+}
+
+.reports-page .report-detail-card {
+  margin-top: 0.75rem;
+}
+
+.reports-page .report-detail-table {
+  font-size: 0.8125rem;
+}
+
+.reports-page .report-detail-table th {
+  white-space: nowrap;
+}
+
+.reports-page .report-export-btn {
+  font-size: 0.8125rem;
+}
+
+.payment-period-toggle .btn {
+  flex: 0 1 auto;
+  min-width: 3.5rem;
+  text-decoration: none;
+}
+
+.payment-period-toggle .btn.active {
+  background: var(--gaa-teal);
+  border-color: var(--gaa-teal);
+  color: #fff;
+  z-index: 1;
+}
+
+@media (max-width: 575.98px) {
+  .payment-period-toggle,
+  .report-period-toggle {
+    width: 100%;
+  }
+
+  .payment-period-toggle .btn,
+  .report-period-toggle .btn {
+    flex: 1 1 auto;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.25rem;
+  }
+}
+
+.payment-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.payment-status-paid {
+  background: rgba(13, 92, 77, 0.12);
+  color: var(--gaa-teal-dark);
+  border: 1px solid rgba(13, 92, 77, 0.2);
+}
+
+.payment-status-pending {
+  background: rgba(255, 193, 7, 0.18);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.45);
+}
+
+.payment-status-partial {
+  background: rgba(13, 110, 253, 0.1);
+  color: #084298;
+  border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.payment-status-canceled {
+  background: rgba(108, 117, 125, 0.12);
+  color: #495057;
+  border: 1px solid rgba(108, 117, 125, 0.25);
+}
+
+.payment-list-filters-row {
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(0, 0.55fr)
+    minmax(0, 0.55fr)
+    minmax(0, 1fr)
+    auto;
+}
+
+@media (max-width: 991.98px) {
+  .payment-list-filters-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .payment-list-filters-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.courier-label-body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 1.25rem 1rem 2rem;
+  background: #e5e5e5;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #000;
+}
+
+.courier-label-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 11cm;
+  margin: 0 auto;
+}
+
+.courier-label-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 10cm;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  color: #000;
+}
+
+.courier-label-date {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  margin: 0;
+  max-width: 45%;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  text-align: right;
+  color: #000;
+}
+
+.courier-label-to-section,
+.courier-label-from-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.courier-label-to-section > *,
+.courier-label-from-section > * {
+  margin: 0;
+}
+
+.courier-label-header.courier-label-to-section {
+  border-bottom: 2px solid #000;
+  padding-bottom: 0.6rem;
+  padding-right: 42%;
+  margin-bottom: 0.75rem;
+}
+
+.courier-label-to-section .courier-label-section-title {
+  font-size: 0.72rem;
+}
+
+.courier-label-to-section .courier-label-party-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #000;
+}
+
+.courier-label-to-section .courier-label-party-phone,
+.courier-label-to-section .courier-label-party-address {
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: #000;
+}
+
+.courier-label-to-section .courier-label-party-address {
+  line-height: 1.4;
+}
+
+.courier-label-from-section .courier-label-section-title {
+  font-size: 0.62rem;
+}
+
+.courier-label-from-section .courier-label-party-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #000;
+}
+
+.courier-label-from-section .courier-label-party-phone,
+.courier-label-from-section .courier-label-party-address {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #000;
+}
+
+.courier-label-section {
+  margin-bottom: 0.75rem;
+}
+
+.courier-label-medicines-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 2px solid #000;
+}
+
+.courier-label-medicines-section > * {
+  margin: 0;
+}
+
+.courier-label-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #333;
+}
+
+.courier-label-meta-key {
+  color: #444;
+}
+
+.courier-label-medicines li {
+  font-size: 0.85rem;
+  padding: 0.15rem 0;
+  color: #000;
+}
+
+.courier-label-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 10cm;
+}
+
+.courier-label-btn {
+  min-width: 5.5rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.courier-label-btn-print {
+  background: #000;
+  color: #fff;
+  border: 2px solid #000;
+}
+
+.courier-label-btn-print:hover {
+  background: #222;
+  border-color: #222;
+}
+
+.courier-label-btn-cancel {
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+}
+
+.courier-label-btn-cancel:hover {
+  background: #f0f0f0;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .courier-label-body {
+    min-height: auto;
+    padding: 0;
+    background: #fff !important;
+  }
+
+  .courier-label-page {
+    gap: 0;
+    max-width: none;
+  }
+
+  .courier-label-sheet {
+    max-width: none;
+    margin: 0;
+    border: 1px solid #000;
+    box-shadow: none;
+    border-radius: 0;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: economy;
+    print-color-adjust: economy;
+  }
+
+  .courier-label-sheet * {
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  .courier-label-header {
+    border-bottom-color: #000 !important;
+  }
+
+  .courier-label-medicines-section {
+    border-top-color: #000 !important;
+  }
+
+  @page {
+    margin: 0.8cm;
+    size: auto;
+  }
+}
+
 .visit-cart-qty {
   width: 4.25rem;
   text-align: center;
@@ -1146,21 +1888,325 @@ body.sidebar-open {
   border-radius: 8px;
 }
 
+.patient-profile-history-card .patient-profile-history-hint {
+  color: rgba(13, 92, 77, 0.65);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+.patient-profile-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.patient-profile-history-entry {
+  border-left: 2px solid rgba(13, 92, 77, 0.14);
+  list-style: none;
+  margin: 0 0 0 0.4rem;
+  padding: 0 0 1.15rem 1rem;
+  position: relative;
+}
+
+.patient-profile-history-entry:last-child {
+  padding-bottom: 0;
+}
+
+.patient-profile-history-entry::before {
+  background: var(--reception-primary, #0d5c4d);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  content: '';
+  height: 8px;
+  left: -5px;
+  position: absolute;
+  top: 0.3rem;
+  width: 8px;
+}
+
+.patient-profile-history-entry-meta {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  gap: 0.2rem 0.65rem;
+  line-height: 1.35;
+  margin-bottom: 0.55rem;
+}
+
+.patient-profile-history-entry-meta time {
+  color: var(--reception-primary, #0d5c4d);
+  font-weight: 600;
+}
+
+.patient-profile-history-editor {
+  color: #6c757d;
+  font-weight: 400;
+}
+
+.patient-profile-history-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.patient-profile-history-change {
+  list-style: none;
+  margin: 0;
+}
+
+.patient-profile-history-change-label {
+  color: rgba(13, 92, 77, 0.8);
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.patient-profile-history-diff {
+  border: 1px solid rgba(13, 92, 77, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.patient-profile-history-diff-row {
+  align-items: start;
+  display: grid;
+  font-size: 0.875rem;
+  gap: 0.35rem 0.75rem;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  line-height: 1.45;
+  padding: 0.45rem 0.65rem;
+}
+
+.patient-profile-history-diff-row--previous {
+  background: #f6f8f7;
+}
+
+.patient-profile-history-diff-row--new {
+  background: rgba(13, 92, 77, 0.04);
+  border-top: 1px solid rgba(13, 92, 77, 0.08);
+}
+
+.patient-profile-history-diff-key {
+  color: #6c757d;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding-top: 0.1rem;
+  text-transform: uppercase;
+}
+
+.patient-profile-history-diff-row--new .patient-profile-history-diff-key {
+  color: var(--reception-primary, #0d5c4d);
+}
+
+.patient-profile-history-diff-text {
+  color: #495057;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.patient-profile-history-diff-row--new .patient-profile-history-diff-text {
+  color: var(--reception-primary, #0d5c4d);
+  font-weight: 500;
+}
+
+@media (max-width: 575.98px) {
+  .patient-profile-history-diff-row {
+    gap: 0.2rem 0.5rem;
+    grid-template-columns: 1fr;
+    padding: 0.4rem 0.55rem;
+  }
+
+  .patient-profile-history-diff-key {
+    padding-top: 0;
+  }
+}
+
 .visit-history-block {
   margin-top: 1.75rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(13, 92, 77, 0.12);
 }
 
-.visit-history-table-wrap {
+.visit-history-table-wrap,
+.patient-visit-history-wrap.table-responsive {
   border: 1px solid rgba(13, 92, 77, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
 }
 
 .visit-history-medicines {
   max-width: 14rem;
   line-height: 1.35;
+}
+
+.patient-visit-history-table {
+  table-layout: fixed;
+  width: 100%;
+  font-size: 1rem;
+}
+
+.patient-visit-history-table thead th {
+  background: rgba(13, 92, 77, 0.06);
+  border-bottom: 1px solid rgba(13, 92, 77, 0.14);
+  color: var(--gaa-teal-dark, #0d5c4d);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 0.85rem;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.patient-visit-history-table tbody td {
+  border-bottom: 1px solid rgba(13, 92, 77, 0.08);
+  font-size: 1rem;
+  line-height: 1.45;
+  padding: 0.85rem;
+  vertical-align: top;
+}
+
+.patient-visit-history-table .payment-status-badge {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.patient-visit-history-table .table-cell-na {
+  font-size: 0.9375rem;
+}
+
+.patient-visit-history-table tbody tr.patient-visit-history-row:hover {
+  background: rgba(13, 92, 77, 0.03);
+}
+
+.patient-visit-history-table .visit-col-medicines {
+  width: 18%;
+}
+
+.patient-visit-history-table .visit-col-total {
+  width: 10%;
+}
+
+.patient-visit-history-table .visit-col-method {
+  width: 9%;
+}
+
+.patient-visit-history-table .visit-col-status {
+  width: 11%;
+}
+
+.patient-visit-history-table .visit-col-paid {
+  width: 9%;
+}
+
+.patient-visit-history-table .visit-col-balance {
+  width: 9%;
+}
+
+.visit-cols-with-paid .visit-col-notes {
+  width: 22%;
+}
+
+.visit-cols-no-paid .visit-col-notes {
+  width: 31%;
+}
+
+.patient-visit-history-table .visit-col-datetime {
+  width: 11%;
+}
+
+.patient-visit-history-table .visit-col-actions {
+  width: 3.5rem;
+}
+
+.patient-visit-history-table .visit-history-medicines {
+  font-size: 0.9375rem;
+  max-width: 12rem;
+  line-height: 1.45;
+}
+
+.patient-visit-history-table .visit-history-datetime {
+  white-space: normal;
+}
+
+.visit-datetime-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.3;
+  min-width: 6.5rem;
+}
+
+.visit-datetime-date {
+  color: var(--gaa-teal-dark, #0d5c4d);
+  font-weight: 600;
+}
+
+.visit-datetime-time {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.patient-visit-history-table .col-actions {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.visit-detail-list {
+  margin: 0;
+}
+
+.visit-detail-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.visit-detail-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.visit-delete-form {
+  margin: 0;
+}
+
+.patient-view-page .visit-records-card .reception-card-title {
+  font-size: 1.05rem;
+}
+
+.patient-view-page .visit-records-card,
+.patient-view-page .visit-history-block {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.patient-view-page .visit-records-card {
+  overflow-x: hidden;
 }
 
 .visit-records-date-row td {
@@ -1190,104 +2236,238 @@ body.sidebar-open {
   opacity: 0.45;
 }
 
-.medicine-kind-badge {
-  border-radius: 4px;
-  display: inline-block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  padding: 0.15rem 0.45rem;
-  text-transform: uppercase;
+.medicine-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
 }
 
-.medicine-kind-unit {
+/* Medicines manager — compact layout */
+.medicine-manage-page .medicine-manage-title {
+  font-size: 1.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.medicine-manage-page .medicine-manage-card {
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.medicine-manage-page .medicine-manage-card-title {
+  font-size: 0.7rem;
+  margin-bottom: 0.45rem;
+}
+
+.medicine-manage-page .alert {
+  margin-bottom: 0.65rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.medicine-manage-page .medicine-add-toolbar {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+}
+
+.medicine-manage-page .medicine-add-toolbar-field {
+  flex: 1 1 12rem;
+  max-width: 100%;
+  min-width: 10rem;
+}
+
+.medicine-manage-page .medicine-add-toolbar-actions {
+  flex: 0 0 auto;
+}
+
+.medicine-manage-page .medicine-add-toolbar .form-control,
+.medicine-manage-page .medicine-list-filters .form-control,
+.medicine-manage-page .medicine-list-filters .btn {
+  min-height: 2.125rem;
+}
+
+.medicine-manage-page .medicine-list-filters-row {
+  gap: 0.4rem 0.5rem;
+}
+
+.medicine-manage-page .medicine-list-filters .form-label {
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+.medicine-manage-page .medicine-inventory-table thead th,
+.medicine-manage-page .medicine-inventory-table tbody td {
+  padding: 0.35rem 0.5rem;
+  vertical-align: middle;
+}
+
+.medicine-manage-page .medicine-inventory-table tbody td {
+  font-size: 0.9rem;
+}
+
+.medicine-manage-page .medicine-manage-list-card .table-responsive {
+  margin-top: 0.35rem;
+}
+
+.medicine-manage-page .medicine-inline-edit-row {
+  gap: 0.25rem;
+}
+
+.medicine-edit-trigger:hover {
+  background: rgba(13, 92, 77, 0.12);
+  color: var(--gaa-teal-dark);
+}
+
+/* Users manager (admin) */
+.user-manage-page .user-manage-title {
+  font-size: 1.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.user-manage-page .user-manage-card {
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.user-manage-page .user-manage-card-title {
+  font-size: 0.7rem;
+  margin-bottom: 0.45rem;
+}
+
+.user-manage-page .alert {
+  margin-bottom: 0.65rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.user-manage-page .user-add-fields .form-label {
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+.user-manage-page .user-add-fields .form-control,
+.user-manage-page .user-add-fields .form-select,
+.user-manage-page .user-add-submit-wrap .btn {
+  min-height: 2.125rem;
+}
+
+.user-manage-page .user-manage-table thead th,
+.user-manage-page .user-manage-table tbody td {
+  padding: 0.35rem 0.5rem;
+  vertical-align: middle;
+}
+
+.user-manage-page .user-row-inactive {
+  opacity: 0.72;
+}
+
+.user-manage-page .user-row-inactive .user-name-display,
+.user-manage-page .user-row-inactive .user-username-display {
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, 0.25);
+}
+
+.user-role-badge,
+.user-status-badge {
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.12rem 0.4rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.user-role-admin {
+  background: rgba(13, 92, 77, 0.15);
+  color: var(--gaa-teal-dark);
+}
+
+.user-role-manager {
   background: rgba(13, 92, 77, 0.1);
   color: var(--reception-primary, #0d5c4d);
 }
 
-.medicine-kind-bulk {
-  background: rgba(13, 92, 77, 0.18);
-  color: #0a4a3d;
+.user-role-receptionist {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
 }
 
-.medicine-inventory-table .medicine-kind-badge {
-  white-space: nowrap;
+.user-status-active {
+  background: rgba(25, 135, 84, 0.12);
+  color: #157347;
 }
 
-.medicine-portion-row td {
-  border-top: none;
-  padding-top: 0;
+.user-status-inactive {
+  background: rgba(108, 117, 125, 0.15);
+  color: #5c636a;
 }
 
-.medicine-portion-inline-form {
-  border-left: 3px solid rgba(13, 92, 77, 0.25);
-  padding-left: 0.75rem;
-}
-
-.medicine-add-fields {
-  --medicine-add-type-width: 8.5rem;
-}
-
-.medicine-add-type-col {
-  flex: 0 0 var(--medicine-add-type-width);
-  max-width: var(--medicine-add-type-width);
-  min-width: var(--medicine-add-type-width);
-}
-
-.medicine-add-fields .form-control,
-.medicine-add-fields .form-select,
-.medicine-add-fields .input-group > .form-control,
-.medicine-add-fields .input-group > .input-group-text,
-.medicine-add-fields .input-group > .volume-unit-toggle,
-.medicine-add-fields .medicine-add-submit-col .btn {
-  box-sizing: border-box;
-  height: 2.5rem;
-  min-height: 2.5rem;
-}
-
-.medicine-add-type-select {
-  padding-right: 1.75rem;
-}
-
-.medicine-add-fields .medicine-add-submit-col .btn {
+.user-actions {
   align-items: center;
   display: inline-flex;
-  justify-content: center;
-  padding-bottom: 0;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.user-edit-row td {
+  background: rgba(13, 92, 77, 0.04);
+  border-top: none;
+  padding-bottom: 0.65rem;
   padding-top: 0;
 }
 
-.medicine-add-name-col {
-  flex: 1 1 8rem;
-  min-width: 7rem;
+.user-edit-row .user-inline-edit-grid {
+  align-items: end;
+  display: grid;
+  gap: 0.5rem 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
 }
 
-.medicine-add-unit-col,
-.medicine-add-bulk-col {
-  flex: 0 1 auto;
-  min-width: 6.5rem;
+.user-edit-row .user-inline-edit-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
-.medicine-add-submit-col {
-  flex: 0 0 auto;
-}
-
-@media (min-width: 1200px) {
-  .medicine-add-fields {
-    flex-wrap: nowrap !important;
-  }
-}
-
-.volume-unit-toggle {
-  cursor: pointer;
-  font-weight: 600;
-  min-width: 2.5rem;
-  user-select: none;
-}
-
-.volume-unit-toggle:hover {
+.user-edit-trigger:hover,
+.user-activate-trigger:hover {
   background: rgba(13, 92, 77, 0.12);
-  color: var(--reception-primary, #0d5c4d);
+  color: var(--gaa-teal-dark);
+}
+
+.user-deactivate-trigger:hover:not(.disabled) {
+  background: rgba(220, 53, 69, 0.1);
+  color: #b02a37;
+}
+
+.medicine-name-cell {
+  min-width: 12rem;
+}
+
+.medicine-inline-edit-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.medicine-inline-edit-input {
+  flex: 1 1 10rem;
+  max-width: 100%;
+  min-width: 8rem;
+}
+
+@media (min-width: 768px) {
+  .medicine-list-filters-row {
+    grid-template-columns: minmax(12rem, 2fr) auto;
+  }
+
+  .courier-list-filters-row {
+    grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) auto;
+  }
 }
 
 .visit-medicine-search-results {
@@ -1330,58 +2510,6 @@ body.sidebar-open {
   font-size: 0.875rem;
 }
 
-.visit-payment-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1rem 1.25rem;
-  align-items: start;
-}
-
-.visit-payment-row:has(.visit-payment-method-col:not(.d-none)) {
-  width: 100%;
-}
-
-/* Method + status only: status stays compact (same button width as when partial is shown). */
-.visit-payment-row:has(.visit-payment-method-col:not(.d-none)):not(:has(.visit-payment-partial-field:not(.d-none))) {
-  grid-template-columns: auto max-content;
-  justify-content: start;
-}
-
-.visit-payment-row:has(.visit-payment-method-col:not(.d-none)):not(:has(.visit-payment-partial-field:not(.d-none))) .visit-payment-status-col .payment-status-group {
-  width: max-content;
-}
-
-.visit-payment-row:has(.visit-payment-method-col:not(.d-none)):not(:has(.visit-payment-partial-field:not(.d-none))) .visit-payment-status-col .payment-status-group .btn {
-  flex: 0 1 auto;
-  min-width: 6.1rem;
-}
-
-/* All three fields: span the full row. */
-.visit-payment-row:has(.visit-payment-partial-field:not(.d-none)) {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-}
-
-.visit-payment-row:has(.visit-payment-partial-field:not(.d-none)) .visit-payment-status-col .payment-status-group {
-  width: 100%;
-}
-
-.visit-payment-method-col .form-select,
-.visit-payment-partial-col .input-group {
-  width: 100%;
-  max-width: 8.25rem;
-}
-
-@media (max-width: 991.98px) {
-  .visit-payment-row:has(.visit-payment-method-col:not(.d-none)) {
-    grid-template-columns: 1fr;
-  }
-
-  .visit-payment-method-col .form-select,
-  .visit-payment-partial-col .input-group {
-    max-width: none;
-  }
-}
-
 .visit-billing-summary {
   display: grid;
   gap: 0.4rem;
@@ -1406,6 +2534,17 @@ body.sidebar-open {
   font-weight: 500;
 }
 
+.visit-billing-medicine-total-row dd,
+.visit-billing-courier-total-row dd {
+  flex: 0 0 auto;
+}
+
+.visit-medicine-total-input,
+.visit-courier-charge-input {
+  width: 7.5rem;
+  max-width: 100%;
+}
+
 .visit-billing-summary-total {
   margin-top: 0.35rem;
   padding-top: 0.6rem;
@@ -1419,6 +2558,317 @@ body.sidebar-open {
   font-size: 1.05rem;
 }
 
-.payment-gst-summary {
-  padding-left: 0.15rem;
+/* ——— Responsive (app-wide) ——— */
+
+.table-responsive {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
+
+@media (max-width: 991.98px) {
+  html {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  body.reception-body.app-layout {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .app-shell,
+  .app-main,
+  .app-main-inner,
+  .patient-view-page {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .reception-card,
+  .visit-records-card,
+  .patient-profile-history-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .reception-card > .row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .table-responsive > .reception-table,
+  .table-responsive > .reception-table-sortable,
+  .table-responsive > .courier-pending-table {
+    width: auto;
+    min-width: 44rem;
+  }
+
+  .patient-visit-history-wrap > .patient-visit-history-table {
+    width: 58rem;
+    min-width: 58rem;
+    max-width: none;
+    table-layout: fixed;
+  }
+
+  .reception-page-title {
+    font-size: 1.35rem;
+  }
+
+  .reception-card {
+    padding: 1rem 1.1rem;
+  }
+
+  .app-main-inner {
+    padding: 1rem 0.75rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .reception-page-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.85rem !important;
+  }
+
+  .reception-card {
+    padding: 0.85rem 0.9rem;
+    border-radius: 8px;
+  }
+
+  .page-header-bar {
+    gap: 0.5rem;
+  }
+
+  .page-header-bar .reception-page-title {
+    flex: 1 1 100%;
+    order: 2;
+  }
+
+  .page-header-bar .page-back-btn {
+    order: 1;
+  }
+
+  .page-header-bar .page-header-actions {
+    order: 3;
+    width: 100%;
+    margin-left: 0 !important;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .patient-view-page .page-header-bar,
+  .page-header-bar--inline {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  .patient-view-page .page-header-bar .reception-page-title,
+  .page-header-bar--inline .reception-page-title {
+    flex: 1 1 auto;
+    order: 0;
+    font-size: 1rem;
+    margin-bottom: 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .patient-view-page .page-header-bar .page-back-btn,
+  .page-header-bar--inline .page-back-btn {
+    order: 0;
+  }
+
+  .patient-view-page .page-header-bar .page-header-actions {
+    order: 0;
+    width: auto;
+    margin-left: auto !important;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    gap: 0.35rem;
+  }
+
+  .patient-view-page .patient-view-total-balance {
+    align-items: flex-end;
+    padding: 0.2rem 0.45rem;
+  }
+
+  .patient-view-page .patient-view-total-balance-label {
+    font-size: 0.6rem;
+  }
+
+  .patient-view-page .patient-view-total-balance-value {
+    font-size: 0.85rem;
+  }
+
+  .patient-view-page .page-header-actions .btn {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .visit-records-card-head .btn,
+  .report-toolbar-card .report-export-btn {
+    width: 100%;
+  }
+
+  .report-toolbar-card .d-flex.flex-wrap.align-items-center.justify-content-between {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .report-toolbar-card .d-flex.flex-wrap.align-items-center.gap-2 {
+    width: 100%;
+  }
+
+  #patientVisitModal.modal {
+    --bs-modal-margin: 0;
+  }
+
+  #patientVisitModal .patient-visit-modal-dialog {
+    margin: 0;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+  }
+
+  #patientVisitModal .modal-content {
+    height: 100%;
+    max-height: 100dvh;
+    min-height: 0;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #patientVisitModal .visit-log-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  #patientVisitModal .modal-header {
+    flex-shrink: 0;
+  }
+
+  #patientVisitModal .patient-visit-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  #patientVisitModal .patient-visit-modal-footer {
+    flex-shrink: 0;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  #patientVisitModal .visit-billing-summary-row {
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  #patientVisitModal .visit-billing-summary-row dt {
+    flex: 1 1 55%;
+    min-width: 0;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  #patientVisitModal .visit-billing-summary-row dd {
+    flex: 0 0 auto;
+    min-width: 5.5rem;
+  }
+
+  #patientVisitModal .patient-visit-medicines-col .visit-form-panel {
+    min-height: 0;
+  }
+
+  #patientVisitModal .visit-billing-visit-charge-input-row .visit-visit-charge-input,
+  #patientVisitModal .visit-medicine-total-input,
+  #patientVisitModal .visit-courier-charge-input {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .medicine-manage-page .medicine-name-cell {
+    min-width: 0;
+  }
+
+  .symptom-manage-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .symptom-in-use-hint {
+    max-width: none;
+    text-align: left;
+  }
+
+  .payment-field--status .payment-status-group .btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: calc(50% - 0.25rem);
+  }
+
+  .auth-main {
+    padding: 1.25rem 0.75rem;
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    padding: 1.5rem 1.1rem;
+  }
+
+  .auth-card .d-flex.align-items-center.gap-2 {
+    flex-wrap: wrap;
+  }
+
+  .captcha-img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .reception-header .container-fluid {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  .patient-list-pagination .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .user-inline-edit-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .visit-medicine-cart-table-wrap {
+    margin-left: -0.15rem;
+    margin-right: -0.15rem;
+  }
+
+  .visit-medicine-table .visit-medicine-th-courier {
+    min-width: 4.5rem;
+  }
+}
+

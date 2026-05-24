@@ -27,9 +27,10 @@ final class PaymentSettings
         return max(0.0, round((float) $raw, 2));
     }
 
+    /** Registration payment fields are always available on the patient form. */
     public static function isEnabled(): bool
     {
-        return self::defaultAmount() > 0;
+        return true;
     }
 
     public static function defaultMethod(): string
@@ -51,8 +52,10 @@ final class PaymentSettings
      */
     public static function registrationDefaults(): array
     {
+        $amount = self::defaultAmount();
+
         return [
-            'payment_amount' => self::formatAmount(self::defaultAmount()),
+            'payment_amount' => $amount > 0 ? self::formatAmount($amount) : '',
             'payment_method' => self::defaultMethod(),
             'payment_status' => self::defaultStatus(),
             'payment_paid_amount' => '',
@@ -64,9 +67,13 @@ final class PaymentSettings
      */
     public static function visitDefaults(): array
     {
+        if (!class_exists('VisitSettings', false)) {
+            require_once APP_PATH . '/models/VisitSettings.php';
+        }
+
         return [
-            'payment_method' => self::defaultMethod(),
-            'payment_status' => self::defaultStatus(),
+            'payment_method' => VisitSettings::defaultPaymentMethod(),
+            'payment_status' => VisitSettings::defaultPaymentStatus(),
             'payment_paid_amount' => '',
         ];
     }
@@ -222,6 +229,25 @@ final class PaymentSettings
         };
     }
 
+    public static function statusBadgeClass(string $status): string
+    {
+        return match ($status) {
+            'paid', 'pending', 'partial' => 'payment-status-' . $status,
+            default => 'payment-status-pending',
+        };
+    }
+
+    public static function statusBadgeHtml(string $status): string
+    {
+        if ($status === '') {
+            return '';
+        }
+
+        return '<span class="payment-status-badge ' . self::statusBadgeClass($status) . '">'
+            . e(self::statusLabel($status))
+            . '</span>';
+    }
+
     public static function formatAmount(float $amount): string
     {
         return number_format($amount, 2, '.', '');
@@ -243,10 +269,6 @@ final class PaymentSettings
      */
     public static function sanitizeRegistration(array $raw): ?array
     {
-        if (!self::isEnabled()) {
-            return null;
-        }
-
         $amountRaw = trim((string) ($raw['payment_amount'] ?? ''));
         $amount = is_numeric($amountRaw) ? max(0.0, round((float) $amountRaw, 2)) : 0.0;
 
@@ -266,14 +288,8 @@ final class PaymentSettings
             $status = '';
         }
 
-        if ($status === 'paid') {
-            $paidAmount = $amount;
-        } elseif ($status === 'pending') {
-            $paidAmount = 0.0;
-        }
-
-        $gstAmount = GstSettings::amountOnBase($amount, GstSettings::registrationPercent());
-        $totalDue = self::registrationTotal($amount, $gstAmount);
+        $split = GstSettings::splitInclusiveTotal($amount, GstSettings::registrationPercent());
+        $totalDue = $split['total'];
 
         if ($status === 'paid') {
             $paidAmount = $totalDue;
@@ -282,8 +298,8 @@ final class PaymentSettings
         }
 
         return [
-            'payment_amount' => $amount,
-            'payment_gst_amount' => $gstAmount,
+            'payment_amount' => $split['base'],
+            'payment_gst_amount' => $split['gst'],
             'payment_method' => $method !== '' ? $method : null,
             'payment_status' => $status !== '' ? $status : null,
             'payment_paid_amount' => $status === 'partial' ? $paidAmount : ($status === 'paid' ? $totalDue : 0.0),
@@ -297,17 +313,18 @@ final class PaymentSettings
     public static function validateRegistration(array $payment): array
     {
         $errors = [];
+        $required = __('validation.required');
 
         if ($payment['payment_amount'] <= 0) {
-            $errors['payment_amount'] = __('payment.error.amount');
+            $errors['payment_amount'] = $required;
         }
 
         if ($payment['payment_method'] === null) {
-            $errors['payment_method'] = __('payment.error.method');
+            $errors['payment_method'] = $required;
         }
 
         if ($payment['payment_status'] === null) {
-            $errors['payment_status'] = __('payment.error.status');
+            $errors['payment_status'] = $required;
         }
 
         if ($payment['payment_status'] === 'partial') {
@@ -316,10 +333,8 @@ final class PaymentSettings
                 (float) $payment['payment_amount'],
                 (float) ($payment['payment_gst_amount'] ?? 0)
             );
-            if ($paid <= 0) {
-                $errors['payment_paid_amount'] = __('payment.error.paid_amount');
-            } elseif ($paid >= $totalDue) {
-                $errors['payment_paid_amount'] = __('payment.error.paid_amount_less');
+            if ($paid <= 0 || $paid >= $totalDue) {
+                $errors['payment_paid_amount'] = $required;
             }
         }
 

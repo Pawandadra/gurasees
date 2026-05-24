@@ -12,9 +12,9 @@ if (auth_check()) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_require();
-
-    if (login_rate_limited()) {
+    if (!csrf_require_form()) {
+        $errors['_form'] = __('error.csrf');
+    } elseif (login_rate_limited()) {
         $errors['_form'] = __('auth.error.locked', ['seconds' => (string) login_rate_limit_seconds()]);
     } elseif (!captcha_verify((string) ($_POST['captcha'] ?? ''))) {
         $errors['captcha'] = __('auth.error.captcha');
@@ -31,7 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         login_record_failure();
-        $errors['_form'] = __('auth.error.invalid');
+        if (!isset($errors['_form'])) {
+            $errors['_form'] = __('auth.error.invalid');
+        }
     }
 }
 

@@ -32,7 +32,9 @@ function auth_login(array $user): void
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['user_name'] = $user['name'];
-    $_SESSION['_created'] = time();
+    $_SESSION['_session_started'] = time();
+    $_SESSION['_user_refreshed_at'] = time();
+    csrf_rotate();
 }
 
 function auth_logout(): void
@@ -50,6 +52,43 @@ function auth_require(): void
     if (!auth_check()) {
         redirect(base_url('/login.php'));
     }
+
+    if (!auth_refresh_session()) {
+        auth_logout();
+        redirect(base_url('/login.php'));
+    }
+}
+
+function auth_refresh_session(): bool
+{
+    $id = (int) ($_SESSION['user_id'] ?? 0);
+    if ($id < 1) {
+        return false;
+    }
+
+    $lastRefresh = (int) ($_SESSION['_user_refreshed_at'] ?? 0);
+    if ($lastRefresh > 0 && time() - $lastRefresh < 90) {
+        if (!class_exists('User', false)) {
+            load_model('User');
+        }
+
+        return User::isActive($id);
+    }
+
+    if (!class_exists('User', false)) {
+        load_model('User');
+    }
+
+    $user = User::findById($id);
+    if ($user === null || !$user['is_active']) {
+        return false;
+    }
+
+    $_SESSION['user_role'] = $user['role'];
+    $_SESSION['user_name'] = $user['name'];
+    $_SESSION['_user_refreshed_at'] = time();
+
+    return true;
 }
 
 /**
@@ -79,29 +118,90 @@ function auth_role_label(string $role): string
 
 function login_rate_limited(): bool
 {
-    $until = (int) ($_SESSION['login_lock_until'] ?? 0);
+    $data = login_rate_read();
 
-    return $until > time();
+    return (int) ($data['lock_until'] ?? 0) > time();
 }
 
 function login_rate_limit_seconds(): int
 {
-    $until = (int) ($_SESSION['login_lock_until'] ?? 0);
+    $data = login_rate_read();
+    $until = (int) ($data['lock_until'] ?? 0);
 
     return max(0, $until - time());
 }
 
 function login_record_failure(): void
 {
-    $count = (int) ($_SESSION['login_fail_count'] ?? 0) + 1;
-    $_SESSION['login_fail_count'] = $count;
+    $data = login_rate_read();
+    $count = (int) ($data['count'] ?? 0) + 1;
+    $lockUntil = (int) ($data['lock_until'] ?? 0);
+
     if ($count >= 5) {
-        $_SESSION['login_lock_until'] = time() + 900;
-        $_SESSION['login_fail_count'] = 0;
+        $lockUntil = time() + 900;
+        $count = 0;
     }
+
+    login_rate_write([
+        'count' => $count,
+        'lock_until' => $lockUntil,
+    ]);
 }
 
 function login_clear_failures(): void
 {
+    $file = login_rate_file();
+    if (is_file($file)) {
+        @unlink($file);
+    }
+
     unset($_SESSION['login_fail_count'], $_SESSION['login_lock_until']);
+}
+
+/**
+ * @return array{count: int, lock_until: int}
+ */
+function login_rate_read(): array
+{
+    $file = login_rate_file();
+    if (!is_readable($file)) {
+        return ['count' => 0, 'lock_until' => 0];
+    }
+
+    $raw = file_get_contents($file);
+    if ($raw === false || $raw === '') {
+        return ['count' => 0, 'lock_until' => 0];
+    }
+
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        return ['count' => 0, 'lock_until' => 0];
+    }
+
+    return [
+        'count' => max(0, (int) ($data['count'] ?? 0)),
+        'lock_until' => max(0, (int) ($data['lock_until'] ?? 0)),
+    ];
+}
+
+/**
+ * @param array{count: int, lock_until: int} $data
+ */
+function login_rate_write(array $data): void
+{
+    $file = login_rate_file();
+    file_put_contents($file, json_encode($data, JSON_THROW_ON_ERROR), LOCK_EX);
+}
+
+function login_rate_file(): string
+{
+    $dir = BASE_PATH . '/storage/cache/login';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0700, true);
+    }
+
+    $username = strtolower(trim((string) ($_POST['username'] ?? '')));
+    $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+
+    return $dir . '/' . hash('sha256', $username . '|' . $ip);
 }

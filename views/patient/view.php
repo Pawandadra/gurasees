@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /** @var array<string, mixed> $patient */
 /** @var list<string> $symptomLabels */
+/** @var list<array<string, mixed>> $profileHistory */
 /** @var list<array<string, mixed>> $visits */
 /** @var array<string, string> $visitErrors */
 /** @var array<string, string> $visitOld */
@@ -13,8 +14,10 @@ declare(strict_types=1);
 /** @var string $dir */
 /** @var string $return */
 /** @var array{q: string, gender: string, page: int} $listFilters */
+/** @var float $totalBalance */
 
 $return = $return ?? 'dashboard';
+$totalBalance = (float) ($totalBalance ?? 0);
 $listFilters = $return === 'visits'
     ? ($listFilters ?? visit_list_filters_from_request())
     : ($listFilters ?? patient_list_filters_from_request());
@@ -28,22 +31,37 @@ $editUrl = base_url('/patient_edit.php?' . http_build_query(['code' => $code]) .
 $visitErrors = $visitErrors ?? [];
 $visitOld = $visitOld ?? ['visited_at' => '', 'notes' => ''];
 $visits = $visits ?? [];
+$profileHistory = $profileHistory ?? [];
 $successMessage = $successMessage ?? null;
+$errorMessage = $errorMessage ?? null;
+$editVisitId = $editVisitId ?? 0;
 
 ob_start();
 ?>
-<div class="page-header-bar mb-4">
+<div class="patient-view-page">
+<div class="page-header-bar">
     <?php $url = $backUrl; require BASE_PATH . '/views/partials/page_back.php'; ?>
     <h1 class="reception-page-title mb-0"><?= e(__('patient.view.title')) ?></h1>
-    <a href="<?= e($editUrl) ?>" class="btn btn-reception-primary btn-sm ms-auto"><?= e(__('patient.action.edit')) ?></a>
+    <div class="page-header-actions ms-auto d-flex align-items-center gap-2 flex-shrink-0">
+        <div class="patient-view-total-balance<?= $totalBalance > 0 ? ' patient-view-total-balance--due' : '' ?>">
+            <span class="patient-view-total-balance-label"><?= e(__('patient.view.total_balance')) ?></span>
+            <span class="patient-view-total-balance-value">
+                <?= e(PaymentSettings::formatAmountDisplay($totalBalance)) ?>
+            </span>
+        </div>
+        <a href="<?= e($editUrl) ?>" class="btn btn-reception-primary btn-sm"><?= e(__('patient.action.edit')) ?></a>
+    </div>
 </div>
 
 <?php if ($successMessage !== null): ?>
     <div class="alert alert-success"><?= e($successMessage) ?></div>
 <?php endif; ?>
 
-<section class="reception-card patient-profile-card mb-4">
-    <h2 class="reception-card-title h6 mb-2"><?= e(__('patient.profile.title')) ?></h2>
+<?php if (!empty($errorMessage)): ?>
+    <div class="alert alert-danger"><?= e($errorMessage) ?></div>
+<?php endif; ?>
+
+<section class="reception-card patient-profile-card">
     <div class="row patient-detail-grid g-2 mb-0">
         <div class="col-md-6">
             <dl class="patient-detail-list mb-0">
@@ -79,11 +97,17 @@ ob_start();
                     <dt><?= e(__('patient.field.delivery_address')) ?></dt>
                     <dd><?= e(Patient::formatDeliveryAddress((string) $patient['address'], $patient['delivery_address'] ?? null)) ?></dd>
                 </div>
+                <?php if (trim((string) ($patient['remarks'] ?? '')) !== ''): ?>
+                    <div class="patient-detail-item patient-remarks-item">
+                        <dt><?= e(__('patient.field.remarks')) ?></dt>
+                        <dd><?= e((string) $patient['remarks']) ?></dd>
+                    </div>
+                <?php endif; ?>
                 <?php $paymentSummary = Patient::formatPaymentSummary($patient); ?>
                 <?php if ($paymentSummary !== null): ?>
                     <div class="patient-detail-item">
                         <dt><?= e(__('patient.field.payment')) ?></dt>
-                        <dd class="small"><?= e($paymentSummary) ?></dd>
+                        <dd><?= e($paymentSummary) ?></dd>
                     </div>
                 <?php endif; ?>
                 <?php if ($symptomLabels !== []): ?>
@@ -102,119 +126,40 @@ ob_start();
 </section>
 
 <section class="reception-card visit-records-card">
-    <h2 class="reception-card-title h6 mb-1"><?= e(__('visit.records.title')) ?></h2>
-    <p class="text-muted small mb-4"><?= e(__('visit.form.intro')) ?></p>
+    <div class="visit-records-card-head d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h2 class="reception-card-title h6 mb-0"><?= e(__('visit.records.title')) ?></h2>
+        <button type="button" class="btn btn-reception-primary btn-sm" id="patientNewVisitBtn"
+                data-bs-toggle="modal" data-bs-target="#patientVisitModal">
+            <?= e(__('visit.add.new_button')) ?>
+        </button>
+    </div>
 
-    <form method="post" action="<?= e(base_url('/patient_view.php')) ?>" class="visit-log-form">
-        <?= csrf_field() ?>
-        <input type="hidden" name="code" value="<?= e($code) ?>">
-        <input type="hidden" name="action" value="add_visit">
-
-        <?php if (isset($visitErrors['_form'])): ?>
-            <div class="alert alert-danger"><?= e($visitErrors['_form']) ?></div>
-        <?php endif; ?>
-
-        <fieldset class="visit-form-section mb-4">
-            <legend class="visit-form-section-title"><?= e(__('visit.form.details')) ?></legend>
-            <div class="row g-3">
-                <div class="col-md-6 col-lg-4">
-                    <label for="visited_at" class="form-label"><?= e(__('visit.field.datetime')) ?></label>
-                    <input type="datetime-local" class="form-control<?= field_invalid($visitErrors, 'visited_at') ?>"
-                           id="visited_at" name="visited_at" value="<?= e($visitOld['visited_at']) ?>" required>
-                    <?php show_field_error($visitErrors, 'visited_at'); ?>
-                </div>
-                <div class="col-md-6 col-lg-4">
-                    <label for="visit_charge" class="form-label"><?= e(__('visit.field.visit_charge')) ?></label>
-                    <div class="input-group">
-                        <span class="input-group-text">₹</span>
-                        <input type="number" class="form-control<?= field_invalid($visitErrors, 'visit_charge') ?>"
-                               id="visit_charge" name="visit_charge" min="0" step="0.01" required
-                               value="<?= e((string) ($visitOld['visit_charge'] ?? ($visitBilling['visit_charge'] ?? '0'))) ?>">
-                    </div>
-                    <?php show_field_error($visitErrors, 'visit_charge'); ?>
-                </div>
-                <div class="col-lg-4">
-                    <label for="visit_notes" class="form-label">
-                        <?= e(__('visit.field.notes')) ?>
-                        <span class="text-muted fw-normal small">(<?= e(__('patient.field.delivery_optional')) ?>)</span>
-                    </label>
-                    <input type="text" class="form-control" id="visit_notes" name="notes"
-                           value="<?= e($visitOld['notes']) ?>" maxlength="500"
-                           placeholder="<?= e(__('visit.field.notes_placeholder')) ?>">
-                </div>
-            </div>
-        </fieldset>
-
-        <?php
-        $catalogMedicines = $catalogMedicines ?? [];
-        $visitMedicineLines = $visitOld['medicines'] ?? [];
-        $visitBilling = $visitBilling ?? Visit::billingDefaults();
-        require BASE_PATH . '/views/partials/visit_billing_fields.php';
-        ?>
-    </form>
-
-    <div class="visit-history-block">
-        <h3 class="visit-form-section-title mb-3"><?= e(__('visit.form.previous')) ?></h3>
-
+    <div class="visit-history-block visit-history-block--standalone">
         <?php if ($visits === []): ?>
             <p class="text-muted mb-0"><?= e(__('visit.records.empty')) ?></p>
         <?php else: ?>
-            <div class="table-responsive visit-history-table-wrap">
-                <table class="table table-hover reception-table visit-history-table mb-0">
-                    <thead>
-                    <tr>
-                        <th scope="col"><?= e(__('visit.field.medicines')) ?></th>
-                        <th scope="col" class="text-end"><?= e(__('visit.field.grand_total')) ?></th>
-                        <th scope="col"><?= e(__('payment.field.method')) ?></th>
-                        <th scope="col"><?= e(__('payment.field.status')) ?></th>
-                        <th scope="col"><?= e(__('visit.field.notes')) ?></th>
-                        <th scope="col"><?= e(__('visit.field.time')) ?></th>
-                        <th scope="col"><?= e(__('visit.field.recorded_by')) ?></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php
-                    $lastDateKey = null;
-                    $dateHeaderColspan = 7;
-                    foreach ($visits as $visit):
-                        $dateKey = Visit::visitedDateKey((string) $visit['visited_at']);
-                        if ($dateKey !== $lastDateKey) {
-                            $lastDateKey = $dateKey;
-                            $colspan = $dateHeaderColspan;
-                            require BASE_PATH . '/views/partials/visit_date_header_row.php';
-                        }
-                        $lines = $visit['medicine_lines'] ?? [];
-                        $grandTotal = (float) ($visit['grand_total'] ?? 0);
-                        ?>
-                        <tr>
-                            <td class="small visit-history-medicines"><?= table_cell(Visit::formatMedicineSummary($lines)) ?></td>
-                            <td class="text-end fw-semibold text-nowrap">
-                                <?= $grandTotal > 0
-                                    ? e(Medicine::formatPriceDisplay($grandTotal))
-                                    : table_na() ?>
-                            </td>
-                            <td class="small text-nowrap">
-                                <?= !empty($visit['payment_method'])
-                                    ? e(PaymentSettings::methodLabel((string) $visit['payment_method']))
-                                    : table_na() ?>
-                            </td>
-                            <td class="small text-nowrap">
-                                <?= !empty($visit['payment_status'])
-                                    ? e(PaymentSettings::statusLabel((string) $visit['payment_status']))
-                                    : table_na() ?>
-                            </td>
-                            <td class="small"><?= table_cell($visit['notes'] ?? '') ?></td>
-                            <td class="text-nowrap small"><?= e(Visit::formatVisitedTime((string) $visit['visited_at'])) ?></td>
-                            <td class="small text-nowrap"><?= table_cell($visit['recorded_by_name'] ?? '') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+            <?php require BASE_PATH . '/views/partials/patient_visit_history_table.php'; ?>
         <?php endif; ?>
     </div>
 </section>
+
+<?php require BASE_PATH . '/views/partials/patient_profile_history.php'; ?>
+
 <?php
-$pageScripts = ['assets/js/visit-charges.js', 'assets/js/visit-payment-fields.js'];
+$catalogMedicines = $catalogMedicines ?? [];
+$visitBilling = $visitBilling ?? Visit::billingDefaults();
+require BASE_PATH . '/views/partials/visit_detail_modal.php';
+require BASE_PATH . '/views/partials/patient_visit_modal.php';
+?>
+</div>
+<?php
+$pageScripts = [
+    'assets/js/gst-inclusive.js',
+    'assets/js/visit-charges.js',
+    'assets/js/visit-payment-fields.js',
+    'assets/js/patient-visit-modal.js',
+    'assets/js/patient-visit-detail.js',
+    'assets/js/form-enter-navigation.js',
+];
 $content = ob_get_clean();
 require BASE_PATH . '/views/layouts/dashboard.php';

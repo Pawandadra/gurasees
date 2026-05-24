@@ -23,10 +23,13 @@ $sortParams = Patient::normalizeSort(
 $return = patient_return_from_request();
 $listFilters = patient_list_filters_from_request();
 
-if (Patient::delete($code)) {
+$deleteResult = Patient::delete($code);
+if ($deleteResult === Patient::DELETE_OK) {
     flash_set('success', __('patient.delete.success', ['code' => $code]));
-} else {
+} elseif ($deleteResult === Patient::DELETE_NOT_FOUND) {
     flash_set('error', __('patient.error.not_found'));
+} else {
+    flash_set('error', __('error.server'));
 }
 
 redirect(patient_return_url($return, $sortParams['sort'], $sortParams['dir'], $listFilters));

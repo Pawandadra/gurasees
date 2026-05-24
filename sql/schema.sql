@@ -1,9 +1,8 @@
--- Gur Asees Ayurveda — complete database schema
+-- Gur Asees Ayurveda — complete database schema (fresh install)
 --
--- Fresh install:
---   1. Create the MySQL database and set credentials in .env
---   2. php scripts/install_db.php
---   3. php scripts/seed_users.php
+-- 1. Create the MySQL database and set credentials in .env
+-- 2. php scripts/install_db.php
+-- 3. php scripts/seed_users.php   (creates admin only; add other users in the app)
 
 SET NAMES utf8mb4;
 
@@ -36,6 +35,7 @@ CREATE TABLE IF NOT EXISTS patients (
     phone VARCHAR(15) NOT NULL,
     address TEXT NOT NULL,
     delivery_address TEXT NULL,
+    remarks TEXT NULL,
     payment_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
     payment_gst_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
     payment_method ENUM('cash', 'upi', 'card', 'bank', 'other') NULL,
@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS patient_symptoms (
     INDEX idx_ps_symptom (symptom_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS patient_profile_history (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT UNSIGNED NOT NULL,
+    edited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    edited_by INT UNSIGNED NULL,
+    snapshot JSON NOT NULL,
+    CONSTRAINT fk_pph_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pph_user FOREIGN KEY (edited_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_pph_patient_edited (patient_id, edited_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------------------------------------------------------------------------
 -- Medicines (inventory) and visit dispensing
 -- ---------------------------------------------------------------------------
@@ -83,32 +94,13 @@ CREATE TABLE IF NOT EXISTS medicines (
     kind ENUM('unit', 'bulk') NOT NULL DEFAULT 'unit',
     unit_price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT UNSIGNED NOT NULL DEFAULT 0,
-    bulk_source_id INT UNSIGNED NULL,
     portion_size_ml INT UNSIGNED NULL,
     sort_order INT UNSIGNED NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_medicine_name (name),
     INDEX idx_medicine_active (is_active, sort_order),
-    INDEX idx_medicine_kind (kind, is_active),
-    INDEX idx_medicine_bulk_source (bulk_source_id),
-    CONSTRAINT fk_medicine_bulk_source FOREIGN KEY (bulk_source_id) REFERENCES medicines(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS medicine_portion_logs (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    bulk_medicine_id INT UNSIGNED NOT NULL,
-    sellable_medicine_id INT UNSIGNED NOT NULL,
-    portion_size_ml INT UNSIGNED NOT NULL,
-    bottles_created INT UNSIGNED NOT NULL,
-    ml_used INT UNSIGNED NOT NULL,
-    created_by INT UNSIGNED NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_portion_bulk FOREIGN KEY (bulk_medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_portion_sellable FOREIGN KEY (sellable_medicine_id) REFERENCES medicines(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_portion_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_portion_bulk (bulk_medicine_id),
-    INDEX idx_portion_created (created_at)
+    INDEX idx_medicine_kind (kind, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS visits (
@@ -125,6 +117,7 @@ CREATE TABLE IF NOT EXISTS visits (
     grand_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
     courier_dispatched_at DATETIME NULL,
     courier_dispatched_by INT UNSIGNED NULL,
+    courier_status ENUM('pending', 'sent', 'canceled') NULL DEFAULT NULL,
     payment_method ENUM('cash', 'upi', 'card', 'bank', 'other') NULL,
     payment_status ENUM('paid', 'pending', 'partial') NULL,
     payment_paid_amount DECIMAL(10, 2) NULL,
@@ -135,7 +128,8 @@ CREATE TABLE IF NOT EXISTS visits (
     CONSTRAINT fk_visit_courier_user FOREIGN KEY (courier_dispatched_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_visit_patient_date (patient_id, visited_at),
     INDEX idx_visit_visited_at (visited_at),
-    INDEX idx_visit_recorded_by (recorded_by)
+    INDEX idx_visit_recorded_by (recorded_by),
+    INDEX idx_visit_courier_status (courier_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS visit_medicines (
@@ -169,5 +163,7 @@ INSERT IGNORE INTO clinic_settings (setting_key, setting_value) VALUES
     ('gst.visit_charge_percent', '5.00'),
     ('gst.medicine_percent', '5.00'),
     ('visit.default_charge', '0.00'),
+    ('visit.default_payment_method', 'cash'),
+    ('visit.default_payment_status', 'paid'),
     ('courier.default_charge', '0.00'),
     ('gst.courier_percent', '5.00');

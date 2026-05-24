@@ -20,13 +20,19 @@ $listFilters = patient_list_filters_from_request();
 $perPage = 25;
 
 try {
-    $listResult = Patient::listFiltered(
-        $listFilters,
-        $sortParams['sort'],
-        $sortParams['dir'],
+    $paginated = list_paginate(
+        static fn (int $p): array => Patient::listFiltered(
+            $listFilters,
+            $sortParams['sort'],
+            $sortParams['dir'],
+            $p,
+            $perPage
+        ),
         $listFilters['page'],
         $perPage
     );
+    $listResult = $paginated['result'];
+    $listFilters['page'] = $paginated['page'];
     $patientRows = $listResult['rows'];
     $totalPatients = $listResult['total'];
     $dbError = false;
@@ -37,8 +43,7 @@ try {
 }
 
 $totalPages = max(1, (int) ceil($totalPatients / $perPage));
-$page = min($listFilters['page'], $totalPages);
-$listFilters['page'] = $page;
+$page = $listFilters['page'];
 
 view('patients/index', array_merge(
     compact(

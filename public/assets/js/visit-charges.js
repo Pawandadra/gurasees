@@ -17,9 +17,10 @@
     var gstVisit = parseFloat(root.getAttribute('data-gst-visit') || '0') || 0;
     var gstMedicine = parseFloat(root.getAttribute('data-gst-medicine') || '0') || 0;
     var gstCourier = parseFloat(root.getAttribute('data-gst-courier') || '0') || 0;
-    var courierChargeDefault = parseFloat(root.getAttribute('data-courier-charge') || '0') || 0;
 
     var visitChargeInput = document.getElementById('visit_charge');
+    var medicineTotalInput = document.getElementById('medicine_total');
+    var courierChargeInput = document.getElementById('courier_charge');
     var searchInput = document.getElementById('visitMedicineSearchInput');
     var searchResults = document.getElementById('visitMedicineSearchResults');
     var cartEl = document.getElementById('visitMedicineCart');
@@ -30,10 +31,11 @@
 
     var summaryVisitCharge = document.getElementById('summaryVisitCharge');
     var summaryVisitGst = document.getElementById('summaryVisitGst');
-    var summaryMedicineSubtotal = document.getElementById('summaryMedicineSubtotal');
+    var summaryVisitBase = document.getElementById('summaryVisitBase');
     var summaryMedicineGst = document.getElementById('summaryMedicineGst');
-    var summaryCourierCharge = document.getElementById('summaryCourierCharge');
+    var summaryMedicineBase = document.getElementById('summaryMedicineBase');
     var summaryCourierGst = document.getElementById('summaryCourierGst');
+    var summaryCourierBase = document.getElementById('summaryCourierBase');
     var summaryGrandTotal = document.getElementById('summaryGrandTotal');
     var courierSummaryRows = root.querySelectorAll('.visit-billing-courier-row');
 
@@ -69,12 +71,12 @@
         return currency + Number(value).toFixed(2);
     }
 
-    function gstAmount(base, percent) {
-        if (base <= 0 || percent <= 0) {
-            return 0;
-        }
-        return Math.round(base * percent * 100) / 10000;
-    }
+    var splitFn =
+        typeof window.gstSplitInclusive === 'function'
+            ? window.gstSplitInclusive
+            : function (net, percent) {
+                  return { base: net, gst: 0, total: net };
+              };
 
     function medicineById(id) {
         var key = String(id);
@@ -95,15 +97,14 @@
     }
 
     function medicineSubtotal() {
-        var total = 0;
-        Object.keys(cart).forEach(function (id) {
-            var med = medicineById(id);
-            var qty = cartQty(id);
-            if (med && qty > 0) {
-                total += parseFloat(med.unit_price) * qty;
-            }
-        });
-        return Math.round(total * 100) / 100;
+        if (!medicineTotalInput) {
+            return 0;
+        }
+        var value = parseFloat(medicineTotalInput.value);
+        if (!Number.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return Math.round(value * 100) / 100;
     }
 
     function hasCourierItems() {
@@ -112,37 +113,54 @@
         });
     }
 
+    function courierSubtotal() {
+        if (!hasCourierItems()) {
+            return 0;
+        }
+        if (!courierChargeInput) {
+            return 0;
+        }
+        var value = parseFloat(courierChargeInput.value);
+        if (!Number.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return Math.round(value * 100) / 100;
+    }
+
     function updateSummary() {
-        var visitCharge = parseVisitCharge();
-        var visitGst = gstAmount(visitCharge, gstVisit);
-        var medSubtotal = medicineSubtotal();
-        var medGst = gstAmount(medSubtotal, gstMedicine);
-        var courierCharge = hasCourierItems() ? courierChargeDefault : 0;
-        var courierGst = gstAmount(courierCharge, gstCourier);
+        var visitNet = parseVisitCharge();
+        var visitSplit = splitFn(visitNet, gstVisit);
+        var medNet = medicineSubtotal();
+        var medSplit = splitFn(medNet, gstMedicine);
+        var courierNet = courierSubtotal();
+        var courierSplit = splitFn(courierNet, gstCourier);
         var grand = Math.round(
-            (visitCharge + visitGst + medSubtotal + medGst + courierCharge + courierGst) * 100
+            (visitSplit.total + medSplit.total + courierSplit.total) * 100
         ) / 100;
 
         if (summaryVisitCharge) {
-            summaryVisitCharge.textContent = formatMoney(visitCharge);
+            summaryVisitCharge.textContent = formatMoney(visitNet);
         }
         if (summaryVisitGst) {
-            summaryVisitGst.textContent = formatMoney(visitGst);
+            summaryVisitGst.textContent = formatMoney(visitSplit.gst);
         }
-        if (summaryMedicineSubtotal) {
-            summaryMedicineSubtotal.textContent = formatMoney(medSubtotal);
+        if (summaryVisitBase) {
+            summaryVisitBase.textContent = formatMoney(visitSplit.base);
         }
         if (summaryMedicineGst) {
-            summaryMedicineGst.textContent = formatMoney(medGst);
+            summaryMedicineGst.textContent = formatMoney(medSplit.gst);
+        }
+        if (summaryMedicineBase) {
+            summaryMedicineBase.textContent = formatMoney(medSplit.base);
         }
         courierSummaryRows.forEach(function (row) {
             row.classList.toggle('d-none', !hasCourierItems());
         });
-        if (summaryCourierCharge) {
-            summaryCourierCharge.textContent = formatMoney(courierCharge);
-        }
         if (summaryCourierGst) {
-            summaryCourierGst.textContent = formatMoney(courierGst);
+            summaryCourierGst.textContent = formatMoney(courierSplit.gst);
+        }
+        if (summaryCourierBase) {
+            summaryCourierBase.textContent = formatMoney(courierSplit.base);
         }
         if (summaryGrandTotal) {
             summaryGrandTotal.textContent = formatMoney(grand);
@@ -184,6 +202,10 @@
     function renderCart() {
         if (!cartEl) {
             return;
+        }
+
+        if (!hasCourierItems() && courierChargeInput) {
+            courierChargeInput.value = '';
         }
 
         cartEl.innerHTML = '';
@@ -250,8 +272,7 @@
                     return;
                 }
                 setCartLine(medId, cartQty(medId), input.checked);
-                syncHiddenInputs();
-                updateSummary();
+                renderCart();
             });
         });
 
@@ -355,6 +376,8 @@
     }
 
     if (searchInput) {
+        var searchWrap = document.getElementById('visitMedicineSearchWrap');
+
         function showFilteredResults() {
             renderSearchResults(filterMedicines(searchInput.value));
         }
@@ -377,9 +400,10 @@
             } else if (event.key === 'ArrowUp') {
                 event.preventDefault();
                 activeIndex = Math.max(activeIndex - 1, 0);
-            } else if (event.key === 'Enter' && activeIndex >= 0) {
+            } else if (event.key === 'Enter') {
                 event.preventDefault();
-                items[activeIndex].click();
+                var pickIndex = activeIndex >= 0 ? activeIndex : 0;
+                items[pickIndex].click();
                 return;
             } else if (event.key === 'Escape') {
                 hideSearchResults();
@@ -392,16 +416,24 @@
             });
         });
 
-        document.addEventListener('click', function (event) {
-            if (!root.contains(event.target)) {
-                hideSearchResults();
-            }
-        });
+        if (searchWrap) {
+            searchWrap.addEventListener('search-dropdown:close', hideSearchResults);
+        }
     }
 
     if (visitChargeInput) {
         visitChargeInput.addEventListener('input', updateSummary);
         visitChargeInput.addEventListener('change', updateSummary);
+    }
+
+    if (medicineTotalInput) {
+        medicineTotalInput.addEventListener('input', updateSummary);
+        medicineTotalInput.addEventListener('change', updateSummary);
+    }
+
+    if (courierChargeInput) {
+        courierChargeInput.addEventListener('input', updateSummary);
+        courierChargeInput.addEventListener('change', updateSummary);
     }
 
     var initial = [];

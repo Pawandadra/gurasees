@@ -9,23 +9,27 @@ declare(strict_types=1);
 /** @var string $dir */
 /** @var string $return */
 /** @var array{q: string, gender: string, page: int} $listFilters */
+/** @var string|null $existingPatientCode */
 
 $return = $return ?? 'dashboard';
 $listFilters = $listFilters ?? patient_list_filters_from_request();
+$existingPatientCode = $existingPatientCode ?? null;
 $phoneIso = (string) ($old['phone_iso'] ?? 'IN');
 $phoneLocal = (string) ($old['phone_local'] ?? '');
 $backUrl = patient_return_url($return, $sort, $dir, $listFilters);
-$showPhonePlaceholder = false;
-
 ob_start();
 ?>
-<div class="page-header-bar mb-4">
+<div class="page-header-bar page-header-bar--inline mb-4">
     <?php $url = $backUrl; require BASE_PATH . '/views/partials/page_back.php'; ?>
     <h1 class="reception-page-title mb-0"><?= e(__('patient.edit.title')) ?></h1>
 </div>
 
 <?php if (isset($errors['_form'])): ?>
     <div class="alert alert-danger"><?= e($errors['_form']) ?></div>
+<?php endif; ?>
+
+<?php if (isset($errors['_duplicate'])): ?>
+    <?php require BASE_PATH . '/views/partials/patient_register_duplicate_alert.php'; ?>
 <?php endif; ?>
 
 <section class="reception-card reception-form">
@@ -49,6 +53,7 @@ ob_start();
         <?php require BASE_PATH . '/views/partials/patient_form_row1.php'; ?>
         <?php require BASE_PATH . '/views/partials/patient_address_row.php'; ?>
         <?php require BASE_PATH . '/views/partials/patient_symptoms_fields.php'; ?>
+        <?php require BASE_PATH . '/views/partials/patient_remarks_field.php'; ?>
 
         <div class="mt-3 d-flex gap-2">
             <button type="submit" class="btn btn-reception-primary"><?= e(__('action.save')) ?></button>
@@ -58,5 +63,10 @@ ob_start();
 </section>
 <?php
 $content = ob_get_clean();
-$pageScripts = ['assets/js/phone-country.js', 'assets/js/delivery-address.js'];
+$pageScripts = [
+    'assets/js/phone-country.js',
+    'assets/js/delivery-address.js',
+    'assets/js/patient-gender-input.js',
+    'assets/js/patient-symptoms-picker.js',
+];
 require BASE_PATH . '/views/layouts/dashboard.php';

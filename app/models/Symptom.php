@@ -20,6 +20,47 @@ final class Symptom
     }
 
     /**
+     * @return list<array{id: int, label: string, in_use: bool}>
+     */
+    public static function listForManage(): array
+    {
+        $stmt = db()->query(
+            'SELECT s.id, s.label,
+                    EXISTS(
+                        SELECT 1 FROM patient_symptoms ps WHERE ps.symptom_id = s.id
+                    ) AS in_use
+             FROM symptoms s
+             WHERE s.is_active = 1
+             ORDER BY s.sort_order ASC, s.id ASC'
+        );
+
+        $out = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $out[] = [
+                'id' => (int) $row['id'],
+                'label' => (string) $row['label'],
+                'in_use' => (bool) $row['in_use'],
+            ];
+        }
+
+        return $out;
+    }
+
+    public static function isAssignedToPatient(int $id): bool
+    {
+        if ($id < 1) {
+            return false;
+        }
+
+        $stmt = db()->prepare(
+            'SELECT 1 FROM patient_symptoms WHERE symptom_id = :id LIMIT 1'
+        );
+        $stmt->execute(['id' => $id]);
+
+        return $stmt->fetch() !== false;
+    }
+
+    /**
      * @return list<int>
      */
     public static function activeIds(): array
@@ -86,7 +127,7 @@ final class Symptom
 
     public static function deactivate(int $id): bool
     {
-        if ($id < 1) {
+        if ($id < 1 || self::isAssignedToPatient($id)) {
             return false;
         }
 

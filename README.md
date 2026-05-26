@@ -26,22 +26,27 @@ Open `http://localhost:8080`. Log in as `admin` (default password in `scripts/se
 
 ### 1. Web server
 
-Point the virtual host **document root** to the `public/` directory:
+Use [`deploy/nginx.conf`](deploy/nginx.conf). It starts as **HTTP-only** so Nginx can run before certificates exist. Certbot then adds SSL paths automatically.
 
-```nginx
-root /var/www/gur-asees-ayurveda/public;
-index index.php;
-location / {
-    try_files $uri $uri/ /index.php?$query_string;
-}
-location ~ \.php$ {
-    include fastcgi_params;
-    fastcgi_pass unix:/run/php/php8.2-fpm.sock;
-    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-}
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/gur-asees-ayurveda.conf
+sudo ln -s /etc/nginx/sites-available/gur-asees-ayurveda.conf /etc/nginx/sites-enabled/
+sudo mkdir -p /var/www/letsencrypt
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Apache: set `DocumentRoot` to `public/` or use the project root `.htaccess` (rewrites into `public/` and blocks `app/`, `sql/`, etc.).
+**Let's Encrypt (recommended — Certbot edits the config and inserts certificate paths):**
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d guraseesayurveda.com -d www.guraseesayurveda.com
+```
+
+Certbot will add a `listen 443 ssl` server block with `ssl_certificate` / `ssl_certificate_key` under `/etc/letsencrypt/live/...`, enable HTTPS redirect on port 80, and set up auto-renewal.
+
+Set `.env`: `APP_URL=https://guraseesayurveda.com`
+
+Apache: set `DocumentRoot` to `public/` or use the project root `.htaccess`.
 
 ### 2. Environment
 

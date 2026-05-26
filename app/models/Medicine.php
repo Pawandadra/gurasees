@@ -53,7 +53,7 @@ final class Medicine
     }
 
     /**
-     * For reception — unit stock and bulk liquids (qty = units; ml deducted from bulk).
+     * For reception — all active medicines (stock is not tracked at this level).
      *
      * @return list<array{id: int, name: string}>
      */
@@ -63,15 +63,6 @@ final class Medicine
             'SELECT id, name, kind, portion_size_ml
              FROM medicines
              WHERE is_active = 1
-               AND (
-                    (kind = \'unit\' AND stock_quantity > 0)
-                    OR (
-                        kind = \'bulk\'
-                        AND portion_size_ml IS NOT NULL
-                        AND portion_size_ml > 0
-                        AND stock_quantity >= portion_size_ml
-                    )
-               )
              ORDER BY sort_order ASC, name ASC'
         );
 
@@ -369,82 +360,26 @@ final class Medicine
             if ($medicine === null) {
                 return ['ok' => false, 'errors' => ['medicines' => __('medicine.error.unavailable')]];
             }
-
-            if ((string) $medicine['kind'] === self::KIND_BULK) {
-                $portionMl = (int) ($medicine['portion_size_ml'] ?? 0);
-                if ($portionMl < 1) {
-                    return ['ok' => false, 'errors' => ['medicines' => __('medicine.error.unavailable')]];
-                }
-                $neededMl = $qty * $portionMl;
-                $availableMl = (int) $medicine['stock_quantity'];
-                if ($neededMl > $availableMl) {
-                    return [
-                        'ok' => false,
-                        'errors' => [
-                            'medicines' => __('medicine.error.bulk_insufficient_ml', [
-                                'name' => $medicine['name'],
-                                'needed' => self::formatVolumeMl($neededMl),
-                                'available' => self::formatVolumeMl($availableMl),
-                            ]),
-                        ],
-                    ];
-                }
-                continue;
-            }
-
-            if ($qty > $medicine['stock_quantity']) {
-                return [
-                    'ok' => false,
-                    'errors' => [
-                        'medicines' => __('medicine.error.insufficient', ['name' => $medicine['name']]),
-                    ],
-                ];
-            }
         }
 
         return ['ok' => true];
     }
 
     /**
-     * @param list<array{medicine_id: int, quantity: int}> $lines
+     * Kept for compatibility with visit/patient deletion flows.
+     * Stock is not tracked at the medicine level, so this is a no-op.
      */
     public static function restoreVisitStock(int $visitId): void
     {
         if ($visitId < 1) {
             return;
         }
-
-        $stmt = db()->prepare(
-            'SELECT vm.medicine_id, vm.quantity, m.kind, m.portion_size_ml
-             FROM visit_medicines vm
-             INNER JOIN medicines m ON m.id = vm.medicine_id
-             WHERE vm.visit_id = :vid'
-        );
-        $stmt->execute(['vid' => $visitId]);
-
-        $restoreUnit = db()->prepare(
-            'UPDATE medicines SET stock_quantity = stock_quantity + :add WHERE id = :id'
-        );
-
-        foreach ($stmt->fetchAll() as $row) {
-            $medicineId = (int) $row['medicine_id'];
-            $qty = (int) $row['quantity'];
-            if ($medicineId < 1 || $qty < 1) {
-                continue;
-            }
-
-            $add = (string) $row['kind'] === self::KIND_BULK
-                ? $qty * max(1, (int) ($row['portion_size_ml'] ?? 0))
-                : $qty;
-
-            $restoreUnit->execute([
-                'add' => $add,
-                'id' => $medicineId,
-            ]);
-        }
     }
 
     /**
+     * Records dispensed medicines on a visit. Stock is not tracked at this level,
+     * so no quantity is deducted from the medicines table.
+     *
      * @param list<array{medicine_id: int, quantity: int}> $lines
      */
     public static function attachToVisit(int $visitId, array $lines): void
@@ -482,56 +417,18 @@ final class Medicine
             'INSERT INTO visit_medicines (visit_id, medicine_id, quantity, unit_price, line_total, courier_quantity)
              VALUES (:visit_id, :medicine_id, :quantity, 0, 0, :courier_quantity)'
         );
-        $deductUnit = $pdo->prepare(
-            'UPDATE medicines SET stock_quantity = stock_quantity - :deduct
-             WHERE id = :id AND kind = :kind AND stock_quantity >= :min_stock'
-        );
-        $deductBulk = $pdo->prepare(
-            'UPDATE medicines SET stock_quantity = stock_quantity - :deduct
-             WHERE id = :id AND kind = :kind AND stock_quantity >= :min_stock'
-        );
 
         foreach ($aggregated as $medicineId => $line) {
-            $qty = (int) $line['quantity'];
-            $medicine = $catalog[$medicineId] ?? null;
-            if ($medicine === null) {
+            if (!isset($catalog[$medicineId])) {
                 throw new RuntimeException('Medicine unavailable');
             }
 
             $ins->execute([
                 'visit_id' => $visitId,
                 'medicine_id' => $medicineId,
-                'quantity' => $qty,
+                'quantity' => (int) $line['quantity'],
                 'courier_quantity' => (int) $line['courier_quantity'],
             ]);
-
-            if ((string) $medicine['kind'] === self::KIND_BULK) {
-                $portionMl = (int) ($medicine['portion_size_ml'] ?? 0);
-                if ($portionMl < 1) {
-                    throw new RuntimeException('Invalid bulk portion');
-                }
-                $deductMl = $qty * $portionMl;
-                $deductBulk->execute([
-                    'deduct' => $deductMl,
-                    'id' => $medicineId,
-                    'kind' => self::KIND_BULK,
-                    'min_stock' => $deductMl,
-                ]);
-                if ($deductBulk->rowCount() === 0) {
-                    throw new RuntimeException('Bulk stock deduct failed');
-                }
-                continue;
-            }
-
-            $deductUnit->execute([
-                'deduct' => $qty,
-                'id' => $medicineId,
-                'kind' => self::KIND_UNIT,
-                'min_stock' => $qty,
-            ]);
-            if ($deductUnit->rowCount() === 0) {
-                throw new RuntimeException('Unit stock deduct failed');
-            }
         }
     }
 

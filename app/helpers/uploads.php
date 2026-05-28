@@ -19,7 +19,7 @@ function stock_bill_store_upload(array $file, int $billId): array
     }
 
     $size = (int) ($file['size'] ?? 0);
-    $maxBytes = 10 * 1024 * 1024;
+    $maxBytes = 2 * 1024 * 1024;
     if ($size < 1 || $size > $maxBytes) {
         return ['ok' => false, 'error' => __('stock.error.file_size')];
     }

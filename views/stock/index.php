@@ -173,7 +173,7 @@ ob_start();
                 <div class="mt-3">
                     <label for="bill_file" class="form-label"><?= e(__('stock.field.file')) ?></label>
                     <input type="file" class="form-control<?= field_invalid($errors, 'file') ?>"
-                           id="bill_file" name="bill_file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" required>
+                           id="bill_file" name="bill_file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
                     <div class="form-text"><?= e(__('stock.field.file_hint')) ?></div>
                     <?php show_field_error($errors, 'file'); ?>
                 </div>

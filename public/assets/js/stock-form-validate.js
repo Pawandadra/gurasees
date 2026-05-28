@@ -94,14 +94,7 @@
             }
         });
 
-        var fileInput = fieldControl('bill_file');
-        if (fileInput && isEmptyValue(fileInput)) {
-            showFieldError(fileInput, requiredMsg);
-            valid = false;
-            if (!firstInvalid) {
-                firstInvalid = fileInput;
-            }
-        }
+        // Bill attachment is optional.
 
         if (!validateItems()) {
             var itemsBlock = document.getElementById('stockItemList');

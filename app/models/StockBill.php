@@ -28,7 +28,8 @@ final class StockBill
 
         $data = self::sanitize($raw);
         $items = self::normalizeLineItems($lineItems);
-        $errors = self::validate($data, $items, $file !== null);
+        $hasUpload = self::hasUploadedFile($file);
+        $errors = self::validate($data, $items, $hasUpload);
         if ($errors !== []) {
             return ['ok' => false, 'errors' => $errors];
         }
@@ -56,7 +57,7 @@ final class StockBill
 
             self::insertItems($billId, $items);
 
-            if ($file !== null) {
+            if ($hasUpload && $file !== null) {
                 $upload = stock_bill_store_upload($file, $billId);
                 if (!$upload['ok']) {
                     $pdo->rollBack();
@@ -383,11 +384,20 @@ final class StockBill
                 $errors['items'] = __('stock.error.amount');
             }
         }
-        if (!$hasFile) {
-            $errors['file'] = $required;
+        return $errors;
+    }
+
+    private static function hasUploadedFile(?array $file): bool
+    {
+        if ($file === null) {
+            return false;
+        }
+        $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            return false;
         }
 
-        return $errors;
+        return true;
     }
 
     /**

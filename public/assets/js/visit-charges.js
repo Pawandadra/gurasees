@@ -238,7 +238,7 @@
             var row = document.createElement('tr');
             row.className = 'visit-medicine-cart-row';
             row.innerHTML =
-                '<td><span class="fw-medium">' + escapeHtml(med.name) + '</span></td>' +
+                '<td><span class="fw-medium">' + escapeHtml(medicineDisplayName(med)) + '</span></td>' +
                 '<td class="text-center"><label class="visually-hidden">' + escapeHtml(root.getAttribute('data-label-qty') || 'Qty') + '</label>' +
                 '<input type="number" class="form-control form-control-sm visit-cart-qty mx-auto" min="1" step="1" value="' + qty + '" data-id="' + id + '"></td>' +
                 '<td class="text-center visit-cart-courier-cell">' +
@@ -328,6 +328,14 @@
         return div.innerHTML;
     }
 
+    function medicineDisplayName(med) {
+        var name = med && med.name != null ? String(med.name) : '';
+        // We are not managing inventory yet; keep labels as medicine name only.
+        // If any older data/logic appended a missing number it can show up as "+NaN" in the UI.
+        name = name.replace(/\s*\+\s*NaN\s*$/i, '').trim();
+        return name;
+    }
+
     function hideSearchResults() {
         if (!searchResults) {
             return;
@@ -392,7 +400,10 @@
             btn.className = 'visit-medicine-search-item';
             btn.setAttribute('role', 'option');
             btn.setAttribute('data-id', String(item.id));
-            btn.innerHTML = '<span class="visit-medicine-search-name">' + escapeHtml(item.name) + '</span>';
+            btn.innerHTML =
+                '<span class="visit-medicine-search-name">' +
+                escapeHtml(medicineDisplayName(item)) +
+                '</span>';
             btn.addEventListener('mousedown', function (event) {
                 event.preventDefault();
             });

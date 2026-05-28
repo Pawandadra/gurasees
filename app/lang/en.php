@@ -397,7 +397,7 @@ return [
   'stock.delete.success' => 'Stock bill deleted.',
   'stock.delete.error' => 'Could not delete the stock bill.',
   'stock.error.not_found' => 'Stock bill not found.',
-  'stock.error.file_not_found' => 'Attachment not found.',
+  'stock.error.file_not_found' => 'No Attachment.',
   'stock.error.items' => 'Please add at least one item with a name and amount.',
   'stock.error.item_quantity' => 'Each item must have a quantity greater than zero.',
   'stock.error.item_amount' => 'Each item must have an amount greater than zero.',

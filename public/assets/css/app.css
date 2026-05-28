@@ -745,6 +745,20 @@
   }
 }
 
+/* Stock list filters */
+.stock-list-filters-row {
+  grid-template-columns:
+    minmax(0, 2fr)
+    minmax(0, 1fr)
+    auto;
+}
+
+@media (max-width: 575.98px) {
+  .stock-list-filters-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .patient-payment-section .input-group-text {
   background: var(--gaa-teal-light);
   color: var(--gaa-teal-dark);
@@ -1032,18 +1046,35 @@
   --sidebar-width: 15rem;
 }
 
+body.reception-body.app-layout {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+body.reception-body.app-layout .reception-header {
+  position: sticky;
+  top: 0;
+  /* Keep header below Bootstrap modals (1055) */
+  z-index: 1030;
+}
+
 .app-shell {
   display: flex;
-  min-height: calc(100vh - 3.25rem);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
 }
 
 .app-sidebar {
-  position: fixed;
-  top: 3.25rem;
+  position: absolute;
+  top: 0;
   left: 0;
   z-index: 1040;
   width: var(--sidebar-width);
-  height: calc(100vh - 3.25rem);
+  height: 100%;
   background: #fff;
   border-right: 1px solid rgba(13, 92, 77, 0.12);
   overflow-y: auto;
@@ -1059,10 +1090,140 @@
   padding: 0.75rem 0.5rem;
 }
 
+.app-sidebar-nav--stack {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .app-sidebar-list {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.app-sidebar-nav--stack .app-sidebar-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.app-sidebar-footer {
+  padding: 0.35rem 0.25rem 0;
+  border-top: 1px solid rgba(13, 92, 77, 0.12);
+}
+
+.app-sidebar-footer-row {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.app-sidebar-footer-row > .app-sidebar-logout-form {
+  flex: 1 1 0;
+}
+
+.app-sidebar-footer-link {
+  flex: 1 1 0;
+  justify-content: center;
+  padding: 0.55rem 0.6rem;
+  margin-bottom: 0;
+}
+
+.app-sidebar-footer-link .app-sidebar-label {
+  white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+  .app-sidebar-footer-row {
+    flex-direction: column;
+  }
+}
+
+.app-sidebar-logout-form {
+  margin: 0;
+}
+
+.app-sidebar-link--button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+/* Profile */
+.profile-card {
+  max-width: 980px;
+}
+
+.profile-page .reception-page-title {
+  margin-bottom: 1rem !important;
+}
+
+.profile-page .reception-card-title.h6 {
+  font-size: 0.75rem;
+}
+
+.profile-page .reception-form .form-label {
+  font-size: 0.875rem;
+}
+
+.profile-page .btn {
+  white-space: nowrap;
+}
+
+.profile-page hr {
+  opacity: 0.15;
+}
+
+.profile-password-wrap {
+  position: relative;
+}
+
+.profile-password-wrap .form-control {
+  padding-right: 2.5rem;
+}
+
+.profile-password-wrap .form-control.is-invalid {
+  padding-right: 4.75rem;
+}
+
+.profile-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6c757d;
+  transition: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.profile-password-toggle:hover {
+  color: var(--gaa-teal-dark);
+}
+
+.profile-password-toggle:focus,
+.profile-password-toggle:focus-visible,
+.profile-password-toggle:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.profile-password-wrap .form-control.is-invalid + .profile-password-toggle {
+  right: 2.35rem;
+}
+
+@media (max-width: 575.98px) {
+  .profile-card {
+    max-width: none;
+  }
 }
 
 .app-sidebar-link {
@@ -1109,8 +1270,8 @@
 }
 
 .app-sidebar-backdrop {
-  position: fixed;
-  inset: 3.25rem 0 0 0;
+  position: absolute;
+  inset: 0;
   z-index: 1035;
   background: rgba(0, 0, 0, 0.35);
 }
@@ -1123,6 +1284,13 @@
   flex: 1;
   min-width: 0;
   width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sidebar-open .app-main {
+  overflow: hidden;
 }
 
 .app-main-inner {
@@ -1136,11 +1304,11 @@ body.sidebar-open {
 
 @media (min-width: 992px) {
   .app-sidebar {
-    position: sticky;
-    top: 0;
     transform: none;
     flex-shrink: 0;
-    height: calc(100vh - 3.25rem);
+    position: sticky;
+    top: 0;
+    height: 100%;
   }
 
   .app-shell {
@@ -1593,6 +1761,19 @@ body.sidebar-open {
 
 .reports-page .report-detail-table th {
   white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .reports-page .report-type-pills {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+  }
+
+  .reports-page .report-type-pills .nav-link {
+    flex: 0 0 auto;
+  }
 }
 
 .reports-page .report-export-btn {
@@ -2900,6 +3081,82 @@ body.sidebar-open {
 
   .visit-medicine-table .visit-medicine-th-courier {
     min-width: 4.5rem;
+  }
+
+.visit-medicine-th-courier[role="button"] {
+  cursor: pointer;
+  user-select: none;
+}
+}
+
+/* Stock bills */
+.stock-item-row .stock-remove-item {
+  min-width: 2.5rem;
+}
+
+.stock-bill-total {
+  font-size: 1rem;
+}
+
+.stock-items-table tfoot th,
+.stock-items-table tfoot td {
+  border-top-width: 2px;
+}
+
+.stock-pdf-viewer {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f8f9fa;
+  padding: 0.5rem;
+}
+
+.stock-pdf-viewer--loading {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stock-pdf-viewer--loading::before {
+  content: "Loading…";
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.stock-pdf-page {
+  margin-bottom: 0.5rem;
+}
+
+.stock-pdf-page:last-child {
+  margin-bottom: 0;
+}
+
+.stock-pdf-page canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stock-attachment-preview img {
+  max-height: 480px;
+  object-fit: contain;
+}
+
+.stock-bill-header-fields .form-label {
+  font-size: 0.875rem;
+}
+
+.stock-detail-dl dt {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+@media (max-width: 767.98px) {
+  .stock-pdf-viewer {
+    max-height: 55vh;
   }
 }
 

@@ -15,3 +15,5 @@ storage/cache/login/*
 !storage/cache/login/.gitkeep
 storage/logs/*
 !storage/logs/.gitkeep
+storage/uploads/stock/*
+!storage/uploads/stock/.gitkeep

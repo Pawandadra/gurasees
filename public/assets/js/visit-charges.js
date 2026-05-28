@@ -25,6 +25,7 @@
     var searchResults = document.getElementById('visitMedicineSearchResults');
     var cartEl = document.getElementById('visitMedicineCart');
     var cartTable = document.getElementById('visitMedicineTable');
+    var courierToggleAll = document.getElementById('visitCourierToggleAll');
     var cartWrap = document.querySelector('.visit-medicine-cart-wrap');
     var cartEmptyEl = document.getElementById('visitMedicineCartEmpty');
     var hiddenEl = document.getElementById('visitMedicineHiddenInputs');
@@ -292,6 +293,35 @@
         updateSummary();
     }
 
+    function toggleAllCourier() {
+        if (!cartEl) {
+            return;
+        }
+
+        var boxes = cartEl.querySelectorAll('.visit-cart-courier');
+        if (!boxes || boxes.length === 0) {
+            return;
+        }
+
+        var allChecked = true;
+        boxes.forEach(function (b) {
+            if (!b.checked) {
+                allChecked = false;
+            }
+        });
+
+        var next = !allChecked;
+        boxes.forEach(function (b) {
+            b.checked = next;
+            var medId = b.getAttribute('data-id');
+            if (medId) {
+                setCartLine(medId, cartQty(medId), next);
+            }
+        });
+
+        renderCart();
+    }
+
     function escapeHtml(text) {
         var div = document.createElement('div');
         div.textContent = text;
@@ -460,6 +490,18 @@
     if (form) {
         form.addEventListener('submit', function () {
             syncHiddenInputs();
+        });
+    }
+
+    if (courierToggleAll) {
+        courierToggleAll.addEventListener('click', function () {
+            toggleAllCourier();
+        });
+        courierToggleAll.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleAllCourier();
+            }
         });
     }
 })();

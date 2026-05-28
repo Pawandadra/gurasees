@@ -178,8 +178,16 @@ final class Patient
         $where = self::buildListWhere($filters);
         $pdo = db();
 
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $countStmt = $pdo->prepare(
+            'SELECT COUNT(*) AS total ' . self::LIST_FROM_SQL . " WHERE {$where['sql']}"
+        );
+        db_bind_named($countStmt, $where['bind'], ['has_phone_digits', 'age_min', 'age_max']);
+        $countStmt->execute();
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
         $stmt = $pdo->prepare(
-            'SELECT ' . self::LIST_SELECT_SQL . ', COUNT(*) OVER() AS _list_total ' . self::LIST_FROM_SQL . "
+            'SELECT ' . self::LIST_SELECT_SQL . ' ' . self::LIST_FROM_SQL . "
              WHERE {$where['sql']}
              ORDER BY {$orderSql}, p.id DESC
              LIMIT :lim OFFSET :off"
@@ -189,7 +197,7 @@ final class Patient
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return db_strip_list_total($stmt->fetchAll());
+        return ['rows' => $stmt->fetchAll(), 'total' => $total];
     }
 
     /**

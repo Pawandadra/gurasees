@@ -167,3 +167,39 @@ INSERT IGNORE INTO clinic_settings (setting_key, setting_value) VALUES
     ('visit.default_payment_status', 'paid'),
     ('courier.default_charge', '0.00'),
     ('gst.courier_percent', '5.00');
+
+-- ---------------------------------------------------------------------------
+-- Stock purchase bills (bill header, line items, optional attachment)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS stock_bills (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    bill_number VARCHAR(64) NOT NULL,
+    register_number VARCHAR(64) NOT NULL,
+    supplier VARCHAR(255) NOT NULL,
+    bill_date DATE NOT NULL,
+    delivery_date DATE NULL,
+    amount DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    file_stored_name VARCHAR(255) NULL,
+    file_original_name VARCHAR(255) NULL,
+    file_mime VARCHAR(120) NULL,
+    file_size INT UNSIGNED NULL,
+    submitted_by INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_stock_bill_user FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_stock_bill_date (bill_date DESC),
+    INDEX idx_stock_bill_delivery (delivery_date),
+    INDEX idx_stock_bill_submitted (submitted_by, created_at DESC),
+    INDEX idx_stock_bill_number (bill_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS stock_bill_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    bill_id INT UNSIGNED NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    quantity DECIMAL(12, 3) NOT NULL DEFAULT 0,
+    amount DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    CONSTRAINT fk_stock_item_bill FOREIGN KEY (bill_id) REFERENCES stock_bills(id) ON DELETE CASCADE,
+    INDEX idx_stock_item_bill (bill_id, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -238,6 +238,66 @@ final class User
     }
 
     /**
+     * @return array{ok: true, name: string, changed: bool}|array{ok: false, errors: array<string, string>}
+     */
+    public static function updateProfile(int $id, array $raw): array
+    {
+        $user = self::fetchByIdWithPassword($id);
+        if ($user === null || !(bool) $user['is_active']) {
+            return ['ok' => false, 'errors' => ['_form' => __('user.error.not_found')]];
+        }
+
+        $name = self::normalizeName((string) ($raw['name'] ?? ''));
+        $currentPassword = (string) ($raw['current_password'] ?? '');
+        $newPassword = (string) ($raw['new_password'] ?? '');
+        $confirm = (string) ($raw['password_confirm'] ?? '');
+        $passwordChangeRequested = $newPassword !== '' || $confirm !== '' || $currentPassword !== '';
+
+        $errors = [];
+        if (mb_strlen($name) < 2) {
+            $errors['name'] = __('validation.required');
+        }
+
+        if ($passwordChangeRequested) {
+            if ($currentPassword === '' || !password_verify($currentPassword, (string) $user['password_hash'])) {
+                $errors['current_password'] = __('profile.error.current_password');
+            }
+            if ($newPassword === '' && $confirm === '') {
+                $errors['new_password'] = __('validation.required');
+            } else {
+                if (strlen($newPassword) < self::MIN_PASSWORD_LENGTH) {
+                    $errors['new_password'] = __('user.error.password_length');
+                }
+                if ($newPassword !== $confirm) {
+                    $errors['password_confirm'] = __('user.error.password_mismatch');
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            return ['ok' => false, 'errors' => $errors];
+        }
+
+        $currentName = (string) ($user['name'] ?? '');
+        $changed = $name !== $currentName || $passwordChangeRequested;
+        if (!$changed) {
+            return ['ok' => true, 'name' => $currentName, 'changed' => false];
+        }
+
+        $params = ['id' => $id, 'name' => $name];
+        $passwordSql = '';
+        if ($newPassword !== '') {
+            $passwordSql = ', password_hash = :password_hash';
+            $params['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+        }
+
+        $stmt = db()->prepare("UPDATE users SET name = :name{$passwordSql} WHERE id = :id");
+        $stmt->execute($params);
+
+        return ['ok' => true, 'name' => $name, 'changed' => true];
+    }
+
+    /**
      * @return array{ok: true}|array{ok: false, errors: array<string, string>}
      */
     public static function setActive(int $id, bool $active, int $actingUserId): array
@@ -392,6 +452,27 @@ final class User
 
         $stmt = db()->prepare($sql);
         $stmt->execute(['username' => $username]);
+        $row = $stmt->fetch();
+
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function fetchByIdWithPassword(int $id): ?array
+    {
+        if ($id < 1) {
+            return null;
+        }
+
+        $stmt = db()->prepare(
+            'SELECT id, password_hash, name, is_active
+             FROM users
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
         return $row !== false ? $row : null;

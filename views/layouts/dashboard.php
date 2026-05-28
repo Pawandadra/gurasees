@@ -41,10 +41,6 @@ $activeNav = $activeNav ?? nav_active_id();
             <?php require BASE_PATH . '/views/partials/header_patient_search.php'; ?>
             <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
                 <span class="text-white-50 small d-none d-md-inline"><?= e($user['name'] ?? '') ?></span>
-                <form method="post" action="<?= e(base_url('/logout.php')) ?>" class="d-inline">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-sm btn-outline-light"><?= e(__('nav.logout')) ?></button>
-                </form>
             </div>
         </div>
     </div>

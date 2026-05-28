@@ -66,12 +66,19 @@ final class Visit
             LEFT JOIN users u ON u.id = v.recorded_by';
 
         $pdo = db();
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $countStmt = $pdo->prepare(
+            'SELECT COUNT(*) AS total ' . $fromSql . " WHERE {$where['sql']}"
+        );
+        db_bind_named($countStmt, $where['bind'], ['has_phone_digits', 'medicine_id']);
+        $countStmt->execute();
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
         $stmt = $pdo->prepare(
             'SELECT v.id, v.visited_at, v.notes, v.grand_total,
                     v.payment_method, v.payment_status, v.payment_paid_amount,
                     p.patient_code, p.name AS patient_name, p.age, p.gender, p.phone,
-                    u.name AS recorded_by_name,
-                    COUNT(*) OVER() AS _list_total '
+                    u.name AS recorded_by_name '
             . $fromSql
             . " WHERE {$where['sql']}
              ORDER BY {$orderSql}, v.id DESC
@@ -82,9 +89,7 @@ final class Visit
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        $listed = db_strip_list_total($stmt->fetchAll());
-        $rows = $listed['rows'];
-        $total = $listed['total'];
+        $rows = $stmt->fetchAll();
         if ($rows === []) {
             return ['rows' => [], 'total' => $total];
         }

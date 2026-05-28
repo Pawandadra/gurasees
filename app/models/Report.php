@@ -8,6 +8,7 @@ require_once APP_PATH . '/models/Courier.php';
 require_once APP_PATH . '/models/Medicine.php';
 require_once APP_PATH . '/models/Patient.php';
 require_once APP_PATH . '/models/Visit.php';
+require_once APP_PATH . '/models/StockBill.php';
 
 final class Report
 {
@@ -20,6 +21,7 @@ final class Report
     public const TYPE_PATIENTS = 'patients';
     public const TYPE_MEDICINES = 'medicines';
     public const TYPE_COURIER = 'courier';
+    public const TYPE_BILLS = 'bills';
 
     /** @var list<string> */
     public const TYPES = [
@@ -29,6 +31,7 @@ final class Report
         self::TYPE_PATIENTS,
         self::TYPE_MEDICINES,
         self::TYPE_COURIER,
+        self::TYPE_BILLS,
     ];
 
     public const PERIOD_TODAY = Payment::PERIOD_TODAY;
@@ -70,6 +73,7 @@ final class Report
             self::TYPE_PATIENTS => self::patients($filters, $period),
             self::TYPE_MEDICINES => self::medicines($filters, $period),
             self::TYPE_COURIER => self::courier($filters, $period),
+            self::TYPE_BILLS => self::bills($filters, $period),
             default => self::overview($filters, $period),
         };
     }
@@ -85,6 +89,7 @@ final class Report
         $patients = self::patients($filters, $period);
         $courier = self::courier($filters, $period);
         $medicines = self::medicines($filters, $period);
+        $bills = self::bills($filters, $period);
 
         return [
             'type' => self::TYPE_OVERVIEW,
@@ -94,6 +99,7 @@ final class Report
             'patients' => $patients,
             'courier' => $courier,
             'medicines' => $medicines,
+            'bills' => $bills,
         ];
     }
 
@@ -271,6 +277,25 @@ final class Report
 
     /**
      * @param array{date_from?: string, date_to?: string} $filters
+     * @return array<string, mixed>
+     */
+    public static function bills(array $filters, string $period): array
+    {
+        $aggregates = self::billAggregates($filters, $period);
+        $billRows = self::billRows($filters, $period, self::DETAIL_LIMIT_UI);
+        $bySupplier = self::billBySupplier($filters, $period);
+
+        return array_merge($aggregates, [
+            'type' => self::TYPE_BILLS,
+            'period' => $period,
+            'by_supplier' => $bySupplier,
+            'rows' => $billRows['rows'],
+            'rows_total' => $billRows['total'],
+        ]);
+    }
+
+    /**
+     * @param array{date_from?: string, date_to?: string} $filters
      */
     public static function sendCsvDownload(string $type, array $filters, string $period): void
     {
@@ -302,6 +327,7 @@ final class Report
             self::TYPE_PATIENTS => self::csvPatients($out, $filters, $period),
             self::TYPE_MEDICINES => self::csvMedicines($out, $filters, $period),
             self::TYPE_COURIER => self::csvCourier($out, $filters, $period),
+            self::TYPE_BILLS => self::csvBills($out, $filters, $period),
             default => self::csvOverview($out, $filters, $period),
         };
 
@@ -414,6 +440,154 @@ final class Report
 
     /**
      * @param array{date_from?: string, date_to?: string} $filters
+     * @return array<string, mixed>
+     */
+    private static function billAggregates(array $filters, string $period): array
+    {
+        $date = self::dateClause('sb.bill_date', $filters, $period);
+        $where = $date['where'];
+        $bind = $date['bind'];
+
+        $stmt = db()->prepare(
+            'SELECT
+                COUNT(*) AS bill_count,
+                COALESCE(SUM(sb.amount), 0) AS total_amount,
+                COUNT(DISTINCT sb.supplier) AS supplier_count
+             FROM stock_bills sb
+             WHERE ' . implode(' AND ', $where)
+        );
+        $stmt->execute($bind);
+        $row = $stmt->fetch() ?: [];
+
+        $billCount = (int) ($row['bill_count'] ?? 0);
+        $totalAmount = round((float) ($row['total_amount'] ?? 0), 2);
+
+        return [
+            'bill_count' => $billCount,
+            'total_amount' => $totalAmount,
+            'supplier_count' => (int) ($row['supplier_count'] ?? 0),
+            'avg_amount' => $billCount > 0 ? round($totalAmount / $billCount, 2) : 0.0,
+        ];
+    }
+
+    /**
+     * @param array{date_from?: string, date_to?: string} $filters
+     * @return list<array{supplier: string, bill_count: int, total_amount: float}>
+     */
+    private static function billBySupplier(array $filters, string $period): array
+    {
+        $date = self::dateClause('sb.bill_date', $filters, $period);
+        $where = $date['where'];
+        $bind = $date['bind'];
+
+        $stmt = db()->prepare(
+            'SELECT sb.supplier,
+                    COUNT(*) AS bill_count,
+                    COALESCE(SUM(sb.amount), 0) AS total_amount
+             FROM stock_bills sb
+             WHERE ' . implode(' AND ', $where) . '
+             GROUP BY sb.supplier
+             ORDER BY total_amount DESC, bill_count DESC, sb.supplier ASC
+             LIMIT 20'
+        );
+        $stmt->execute($bind);
+
+        $rows = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $rows[] = [
+                'supplier' => (string) ($row['supplier'] ?? ''),
+                'bill_count' => (int) ($row['bill_count'] ?? 0),
+                'total_amount' => round((float) ($row['total_amount'] ?? 0), 2),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array{date_from?: string, date_to?: string} $filters
+     * @return array{rows: list<array<string, mixed>>, total: int}
+     */
+    private static function billRows(array $filters, string $period, int $limit): array
+    {
+        $date = self::dateClause('sb.bill_date', $filters, $period);
+        $where = $date['where'];
+        $bind = $date['bind'];
+        $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
+        $whereSql = implode(' AND ', $where);
+
+        // Total count without window functions.
+        $countStmt = db()->prepare('SELECT COUNT(*) AS total FROM stock_bills sb WHERE ' . $whereSql);
+        $countStmt->execute($bind);
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
+        $stmt = db()->prepare(
+            'SELECT sb.bill_number, sb.register_number, sb.supplier, sb.bill_date, sb.delivery_date, sb.amount,
+                    u.name AS submitted_by_name,
+                    (
+                        SELECT GROUP_CONCAT(sbi.item_name ORDER BY sbi.sort_order SEPARATOR \', \')
+                        FROM stock_bill_items sbi
+                        WHERE sbi.bill_id = sb.id
+                    ) AS items_summary
+             FROM stock_bills sb
+             INNER JOIN users u ON u.id = sb.submitted_by
+             WHERE ' . $whereSql . '
+             ORDER BY sb.bill_date DESC, sb.id DESC
+             LIMIT ' . $lim
+        );
+        $stmt->execute($bind);
+
+        $rows = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $rows[] = [
+                'bill_number' => (string) $row['bill_number'],
+                'register_number' => (string) ($row['register_number'] ?? ''),
+                'supplier' => (string) ($row['supplier'] ?? ''),
+                'bill_date' => (string) $row['bill_date'],
+                'delivery_date' => $row['delivery_date'] !== null ? (string) $row['delivery_date'] : null,
+                'amount' => round((float) ($row['amount'] ?? 0), 2),
+                'submitted_by_name' => (string) ($row['submitted_by_name'] ?? ''),
+                'items_summary' => trim((string) ($row['items_summary'] ?? '')),
+            ];
+        }
+
+        return ['rows' => $rows, 'total' => $total];
+    }
+
+    /**
+     * @param resource $out
+     * @param array{date_from?: string, date_to?: string} $filters
+     */
+    private static function csvBills($out, array $filters, string $period): void
+    {
+        csv_put_row($out, [
+            'Bill number',
+            'Register number',
+            'Supplier',
+            'Purchase date',
+            'Delivery date',
+            'Total amount',
+            'Item names',
+            'Submitted by',
+        ]);
+
+        $rows = self::billRows($filters, $period, self::DETAIL_LIMIT_CSV)['rows'];
+        foreach ($rows as $row) {
+            csv_put_row($out, [
+                (string) ($row['bill_number'] ?? ''),
+                (string) ($row['register_number'] ?? ''),
+                (string) ($row['supplier'] ?? ''),
+                (string) ($row['bill_date'] ?? ''),
+                (string) ($row['delivery_date'] ?? ''),
+                (string) ($row['amount'] ?? ''),
+                (string) ($row['items_summary'] ?? ''),
+                (string) ($row['submitted_by_name'] ?? ''),
+            ]);
+        }
+    }
+
+    /**
+     * @param array{date_from?: string, date_to?: string} $filters
      * @return array{rows: list<array<string, mixed>>, total: int}
      */
     private static function visitRows(array $filters, string $period, int $limit): array
@@ -423,25 +597,33 @@ final class Report
         $bind = $date['bind'];
         $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
 
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $whereSql = implode(' AND ', $where);
+        $countStmt = db()->prepare(
+            'SELECT COUNT(*) AS total
+             FROM visits v
+             INNER JOIN patients p ON p.id = v.patient_id
+             WHERE ' . $whereSql
+        );
+        $countStmt->execute($bind);
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
         $stmt = db()->prepare(
             'SELECT v.id, v.visited_at, v.notes, p.patient_code, p.name AS patient_name, p.phone,
                     p.age, p.gender,
                     v.grand_total, v.visit_charge, v.visit_gst,
                     v.medicine_total, v.medicine_gst,
                     v.courier_charge, v.courier_gst,
-                    v.payment_method, v.payment_status, v.payment_paid_amount,
-                    COUNT(*) OVER() AS _list_total
+                    v.payment_method, v.payment_status, v.payment_paid_amount
              FROM visits v
              INNER JOIN patients p ON p.id = v.patient_id
-             WHERE ' . implode(' AND ', $where) . '
+             WHERE ' . $whereSql . '
              ORDER BY v.visited_at DESC, v.id DESC
              LIMIT ' . $lim
         );
         $stmt->execute($bind);
 
-        $listed = db_strip_list_total($stmt->fetchAll());
-        $fetched = $listed['rows'];
-        $total = $listed['total'];
+        $fetched = $stmt->fetchAll();
         $visitIds = array_map(static fn (array $row): int => (int) $row['id'], $fetched);
         $linesByVisit = Visit::medicineLinesForVisits($visitIds);
 
@@ -484,21 +666,24 @@ final class Report
         $bind = $date['bind'];
         $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
 
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $whereSql = implode(' AND ', $where);
+        $countStmt = db()->prepare('SELECT COUNT(*) AS total FROM patients p WHERE ' . $whereSql);
+        $countStmt->execute($bind);
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
         $stmt = db()->prepare(
             'SELECT p.patient_code, p.name, p.phone, p.age, p.gender, p.created_at,
                     p.payment_amount, p.payment_gst_amount,
-                    p.payment_method, p.payment_status, p.payment_paid_amount,
-                    COUNT(*) OVER() AS _list_total
+                    p.payment_method, p.payment_status, p.payment_paid_amount
              FROM patients p
-             WHERE ' . implode(' AND ', $where) . '
+             WHERE ' . $whereSql . '
              ORDER BY p.created_at DESC, p.id DESC
              LIMIT ' . $lim
         );
         $stmt->execute($bind);
-
-        $listed = db_strip_list_total($stmt->fetchAll());
         $rows = [];
-        foreach ($listed['rows'] as $row) {
+        foreach ($stmt->fetchAll() as $row) {
             $totalFee = round((float) $row['payment_amount'] + (float) $row['payment_gst_amount'], 2);
             $rows[] = [
                 'created_at' => (string) $row['created_at'],
@@ -513,7 +698,7 @@ final class Report
             ];
         }
 
-        return ['rows' => $rows, 'total' => $listed['total']];
+        return ['rows' => $rows, 'total' => $total];
     }
 
     /**
@@ -527,23 +712,33 @@ final class Report
         $bind = $date['bind'];
         $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
 
-        $stmt = db()->prepare(
-            'SELECT v.visited_at, p.patient_code, p.name AS patient_name,
-                    m.name AS medicine_name, vm.quantity,
-                    COUNT(*) OVER() AS _list_total
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $whereSql = implode(' AND ', $where);
+        $countStmt = db()->prepare(
+            'SELECT COUNT(*) AS total
              FROM visit_medicines vm
              INNER JOIN visits v ON v.id = vm.visit_id
              INNER JOIN patients p ON p.id = v.patient_id
              INNER JOIN medicines m ON m.id = vm.medicine_id
-             WHERE ' . implode(' AND ', $where) . '
+             WHERE ' . $whereSql
+        );
+        $countStmt->execute($bind);
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
+        $stmt = db()->prepare(
+            'SELECT v.visited_at, p.patient_code, p.name AS patient_name,
+                    m.name AS medicine_name, vm.quantity
+             FROM visit_medicines vm
+             INNER JOIN visits v ON v.id = vm.visit_id
+             INNER JOIN patients p ON p.id = v.patient_id
+             INNER JOIN medicines m ON m.id = vm.medicine_id
+             WHERE ' . $whereSql . '
              ORDER BY v.visited_at DESC, v.id DESC, m.name ASC
              LIMIT ' . $lim
         );
         $stmt->execute($bind);
-
-        $listed = db_strip_list_total($stmt->fetchAll());
         $rows = [];
-        foreach ($listed['rows'] as $row) {
+        foreach ($stmt->fetchAll() as $row) {
             $rows[] = [
                 'visited_at' => (string) $row['visited_at'],
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
@@ -553,7 +748,7 @@ final class Report
             ];
         }
 
-        return ['rows' => $rows, 'total' => $listed['total']];
+        return ['rows' => $rows, 'total' => $total];
     }
 
     /**
@@ -570,23 +765,31 @@ final class Report
         $bind = $date['bind'];
         $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
 
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $whereSql = implode(' AND ', $where);
+        $countStmt = db()->prepare(
+            'SELECT COUNT(*) AS total
+             FROM visits v
+             INNER JOIN patients p ON p.id = v.patient_id
+             WHERE ' . $whereSql
+        );
+        $countStmt->execute($bind);
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
         $stmt = db()->prepare(
             'SELECT v.id, v.visited_at, v.courier_status, v.courier_dispatched_at,
                     v.courier_charge, v.courier_gst,
                     p.patient_code, p.name AS patient_name, p.phone,
-                    p.delivery_address,
-                    COUNT(*) OVER() AS _list_total
+                    p.delivery_address
              FROM visits v
              INNER JOIN patients p ON p.id = v.patient_id
-             WHERE ' . implode(' AND ', $where) . '
+             WHERE ' . $whereSql . '
              ORDER BY v.visited_at DESC, v.id DESC
              LIMIT ' . $lim
         );
         $stmt->execute($bind);
-
-        $listed = db_strip_list_total($stmt->fetchAll());
         $rows = [];
-        foreach ($listed['rows'] as $row) {
+        foreach ($stmt->fetchAll() as $row) {
             $rows[] = [
                 'visited_at' => (string) $row['visited_at'],
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
@@ -599,7 +802,7 @@ final class Report
             ];
         }
 
-        return ['rows' => $rows, 'total' => $listed['total']];
+        return ['rows' => $rows, 'total' => $total];
     }
 
     /**

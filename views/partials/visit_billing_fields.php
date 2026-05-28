@@ -64,7 +64,13 @@ $visitOld = $visitOld ?? [];
                             <tr>
                                 <th scope="col"><?= e(__('visit.medicine.table.name')) ?></th>
                                 <th scope="col" class="text-center visit-medicine-th-qty"><?= e(__('visit.medicine.field.quantity')) ?></th>
-                                <th scope="col" class="text-center visit-medicine-th-courier"><?= e(__('visit.courier.column')) ?></th>
+                                <th scope="col" class="text-center visit-medicine-th-courier"
+                                    id="visitCourierToggleAll"
+                                    role="button"
+                                    tabindex="0"
+                                    title="<?= e(__('visit.courier.column')) ?>">
+                                    <?= e(__('visit.courier.column')) ?>
+                                </th>
                                 <th scope="col" class="visit-medicine-th-action"><span class="visually-hidden"><?= e(__('visit.medicine.table.action')) ?></span></th>
                             </tr>
                             </thead>

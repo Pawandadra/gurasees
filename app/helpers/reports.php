@@ -70,6 +70,7 @@ function report_type_options(): array
         Report::TYPE_PATIENTS => __('report.type.patients'),
         Report::TYPE_MEDICINES => __('report.type.medicines'),
         Report::TYPE_COURIER => __('report.type.courier'),
+        Report::TYPE_BILLS => __('report.type.bills'),
     ];
 }
 

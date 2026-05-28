@@ -51,6 +51,13 @@ function nav_items(string $role): array
             'roles' => ['manager', 'admin'],
         ],
         [
+            'id' => 'stock',
+            'url' => '/stock.php',
+            'label' => __('nav.stock'),
+            'icon' => 'stock',
+            'roles' => ['receptionist', 'manager', 'admin'],
+        ],
+        [
             'id' => 'payments',
             'url' => '/payments.php',
             'label' => __('nav.payment_settings'),
@@ -89,6 +96,8 @@ function nav_active_id(): string
         'courier', 'courier_view', 'courier_label' => 'courier',
         'symptoms' => 'symptoms',
         'medicines' => 'medicines',
+        'stock', 'stock_view', 'stock_file', 'stock_delete' => 'stock',
+        'profile' => 'profile',
         'payments', 'payment_settings' => 'payments',
         'reports' => 'reports',
         'users' => 'users',

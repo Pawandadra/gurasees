@@ -309,8 +309,20 @@ final class Payment
         );
         $offset = ($page - 1) * $perPage;
 
-        $sql = 'SELECT *, COUNT(*) OVER() AS _list_total FROM (' . self::ledgerSubquerySql() . ') AS payments
-                WHERE ' . implode(' AND ', $ctx['where']) . "
+        // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
+        $whereSql = implode(' AND ', $ctx['where']);
+
+        $countSql = 'SELECT COUNT(*) AS total FROM (' . self::ledgerSubquerySql() . ') AS payments
+                     WHERE ' . $whereSql;
+        $countStmt = db()->prepare($countSql);
+        foreach ($ctx['bind'] as $key => $value) {
+            $countStmt->bindValue(':' . $key, $value);
+        }
+        $countStmt->execute();
+        $total = (int) (($countStmt->fetch()['total'] ?? 0));
+
+        $sql = 'SELECT * FROM (' . self::ledgerSubquerySql() . ') AS payments
+                WHERE ' . $whereSql . "
                 ORDER BY {$orderSql}, payment_type ASC, source_id ASC
                 LIMIT :lim OFFSET :off";
 
@@ -322,13 +334,11 @@ final class Payment
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        $result = db_strip_list_total($stmt->fetchAll());
-        $result['rows'] = array_map(
+        $rows = array_map(
             static fn (array $row): array => self::mapRow($row),
-            $result['rows']
+            $stmt->fetchAll()
         );
-
-        return $result;
+        return ['rows' => $rows, 'total' => $total];
     }
 
     /**

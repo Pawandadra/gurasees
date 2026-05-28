@@ -405,6 +405,8 @@ return [
   'stock.error.file_type' => 'Only JPG, PNG, WebP images or PDF files are allowed.',
   'stock.error.file_size' => 'File must be 10 MB or smaller.',
   'stock.error.upload' => 'Could not save the attachment. Please try again.',
+  'stock.error.duplicate_bill_number' => 'This bill number is already in use.',
+  'stock.error.duplicate_register_number' => 'This register number is already in use.',
 
   // Payment
   'payment.section.title' => 'Payment',

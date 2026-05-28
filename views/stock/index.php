@@ -84,14 +84,14 @@ ob_start();
                         <input type="text" class="form-control<?= field_invalid($errors, 'register_number') ?>"
                                id="register_number" name="register_number" maxlength="64" required
                                value="<?= e((string) $old['register_number']) ?>">
-                        <?php show_field_error($errors, 'register_number', true); ?>
+                        <?php show_field_error($errors, 'register_number'); ?>
                     </div>
                     <div class="col-6 col-md-4 col-lg-2">
                         <label for="bill_date" class="form-label"><?= e(__('stock.field.bill_date')) ?></label>
                         <input type="date" class="form-control<?= field_invalid($errors, 'bill_date') ?>"
                                id="bill_date" name="bill_date" required
                                value="<?= e((string) $old['bill_date']) ?>">
-                        <?php show_field_error($errors, 'bill_date', true); ?>
+                        <?php show_field_error($errors, 'bill_date'); ?>
                     </div>
                     <div class="col-6 col-md-4 col-lg-2">
                         <label for="delivery_date" class="form-label">
@@ -106,7 +106,7 @@ ob_start();
                         <input type="text" class="form-control<?= field_invalid($errors, 'supplier') ?>"
                                id="supplier" name="supplier" maxlength="255" required
                                value="<?= e((string) $old['supplier']) ?>">
-                        <?php show_field_error($errors, 'supplier', true); ?>
+                        <?php show_field_error($errors, 'supplier'); ?>
                     </div>
                 </div>
 

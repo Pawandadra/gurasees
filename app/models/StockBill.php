@@ -83,12 +83,27 @@ final class StockBill
             $pdo->commit();
 
             return ['ok' => true, 'id' => $billId];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             if (isset($billId) && $billId > 0) {
                 stock_bill_delete_bill_files($billId);
+            }
+
+            // If a duplicate slips through due to a race condition, map it to field errors.
+            if ($e instanceof PDOException && ($e->getCode() === '23000' || $e->getCode() === 23000)) {
+                $dupe = self::findDuplicateNumbers($data['bill_number'], $data['register_number']);
+                $errors = [];
+                if ($dupe['bill_number']) {
+                    $errors['bill_number'] = __('stock.error.duplicate_bill_number');
+                }
+                if ($dupe['register_number']) {
+                    $errors['register_number'] = __('stock.error.duplicate_register_number');
+                }
+                if ($errors !== []) {
+                    return ['ok' => false, 'errors' => $errors];
+                }
             }
 
             return ['ok' => false, 'errors' => ['_form' => __('error.server')]];
@@ -339,6 +354,18 @@ final class StockBill
         if ($data['bill_date'] === '') {
             $errors['bill_date'] = $required;
         }
+
+        // Bill number and register number must be unique.
+        if (!isset($errors['bill_number']) && !isset($errors['register_number'])
+            && $data['bill_number'] !== '' && $data['register_number'] !== '') {
+            $dupe = self::findDuplicateNumbers($data['bill_number'], $data['register_number']);
+            if ($dupe['bill_number']) {
+                $errors['bill_number'] = __('stock.error.duplicate_bill_number');
+            }
+            if ($dupe['register_number']) {
+                $errors['register_number'] = __('stock.error.duplicate_register_number');
+            }
+        }
         if ($items === []) {
             $errors['items'] = __('stock.error.items');
         } else {
@@ -361,6 +388,39 @@ final class StockBill
         }
 
         return $errors;
+    }
+
+    /**
+     * @return array{bill_number: bool, register_number: bool}
+     */
+    private static function findDuplicateNumbers(string $billNumber, string $registerNumber): array
+    {
+        $billNumber = trim($billNumber);
+        $registerNumber = trim($registerNumber);
+        if ($billNumber === '' && $registerNumber === '') {
+            return ['bill_number' => false, 'register_number' => false];
+        }
+
+        $stmt = db()->prepare(
+            'SELECT bill_number, register_number
+             FROM stock_bills
+             WHERE bill_number = :bill OR register_number = :reg
+             LIMIT 10'
+        );
+        $stmt->execute(['bill' => $billNumber, 'reg' => $registerNumber]);
+
+        $hasBill = false;
+        $hasReg = false;
+        foreach ($stmt->fetchAll() as $row) {
+            if ((string) ($row['bill_number'] ?? '') === $billNumber) {
+                $hasBill = true;
+            }
+            if ((string) ($row['register_number'] ?? '') === $registerNumber) {
+                $hasReg = true;
+            }
+        }
+
+        return ['bill_number' => $hasBill, 'register_number' => $hasReg];
     }
 
     /**

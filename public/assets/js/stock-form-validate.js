@@ -121,6 +121,9 @@
             event.preventDefault();
             if (firstInvalid && typeof firstInvalid.focus === 'function') {
                 firstInvalid.focus();
+                if (typeof firstInvalid.scrollIntoView === 'function') {
+                    firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
             }
         }
     });

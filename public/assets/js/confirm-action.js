@@ -67,9 +67,14 @@
 
     confirmBtn.addEventListener('click', function () {
         if (pendingForm) {
-            if (typeof pendingForm.reportValidity === 'function' && !pendingForm.reportValidity()) {
-                modal.hide();
-                return;
+            // For forms using custom validation (novalidate), skip native constraint checks
+            // and let the form's submit handler show inline errors.
+            var usesCustomValidation = pendingForm.hasAttribute('novalidate');
+            if (!usesCustomValidation) {
+                if (typeof pendingForm.reportValidity === 'function' && !pendingForm.reportValidity()) {
+                    modal.hide();
+                    return;
+                }
             }
             if (typeof pendingForm.requestSubmit === 'function') {
                 pendingForm.requestSubmit();

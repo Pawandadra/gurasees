@@ -187,10 +187,11 @@ CREATE TABLE IF NOT EXISTS stock_bills (
     submitted_by INT UNSIGNED NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_stock_bill_user FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE RESTRICT,
+    UNIQUE KEY uk_stock_bill_number (bill_number),
+    UNIQUE KEY uk_stock_bill_register_number (register_number),
     INDEX idx_stock_bill_date (bill_date DESC),
     INDEX idx_stock_bill_delivery (delivery_date),
-    INDEX idx_stock_bill_submitted (submitted_by, created_at DESC),
-    INDEX idx_stock_bill_number (bill_number)
+    INDEX idx_stock_bill_submitted (submitted_by, created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS stock_bill_items (

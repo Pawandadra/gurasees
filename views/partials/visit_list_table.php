@@ -18,7 +18,7 @@ $textEndColumns = ['total', 'paid_amount', 'balance'];
         <tr>
             <?php foreach ($visitColumns as $colKey => $colLabel): ?>
                 <?php
-                $isSortable = !in_array($colKey, ['medicines', 'paid_amount', 'balance'], true);
+                $isSortable = !in_array($colKey, ['medicines', 'paid_amount', 'balance', 'delivery_method'], true);
                 $thExtra = in_array($colKey, $textEndColumns, true) ? ['text-end'] : [];
                 $thClassAttr = responsive_col_attr('visits', $colKey, $thExtra);
                 ?>
@@ -55,8 +55,13 @@ $textEndColumns = ['total', 'paid_amount', 'balance'];
             $grandTotal = (float) ($row['grand_total'] ?? 0);
             $paymentStatus = (string) ($row['payment_status'] ?? '');
             $balance = Visit::paymentBalance($row);
+            $visitId = (int) ($row['id'] ?? 0);
+            $patientCode = (string) $row['patient_code'];
+            $rowAttrs = $visitId > 0
+                ? ' class="visit-detail-row" data-visit-id="' . e((string) $visitId) . '" data-patient-code="' . e($patientCode) . '" tabindex="0" role="button" aria-label="' . e(__('visit.detail.view')) . '"'
+                : '';
             ?>
-            <tr>
+            <tr<?= $rowAttrs ?>>
                 <?php foreach ($visitColumns as $colKey => $colLabel): ?>
                     <?php if ($colKey === 'patient_id'): ?>
                         <td<?= responsive_col_attr('visits', $colKey) ?>><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
@@ -70,6 +75,8 @@ $textEndColumns = ['total', 'paid_amount', 'balance'];
                         <td<?= responsive_col_attr('visits', $colKey, ['text-nowrap']) ?>><?= e(phone_format_display((string) ($row['phone'] ?? ''))) ?></td>
                     <?php elseif ($colKey === 'medicines'): ?>
                         <td<?= responsive_col_attr('visits', $colKey, ['small', 'visit-history-medicines']) ?>><?= table_cell(Visit::formatMedicineSummary($lines)) ?></td>
+                    <?php elseif ($colKey === 'delivery_method'): ?>
+                        <td<?= responsive_col_attr('visits', $colKey, ['small', 'text-nowrap']) ?>><?= e(Visit::deliveryMethodLabel((string) ($row['delivery_method'] ?? Visit::DELIVERY_SELF))) ?></td>
                     <?php elseif ($colKey === 'total'): ?>
                         <td<?= responsive_col_attr('visits', $colKey, ['text-end', 'fw-semibold', 'text-nowrap']) ?>>
                             <?= $grandTotal > 0 ? e(Medicine::formatPriceDisplay($grandTotal)) : table_na() ?>
@@ -108,10 +115,7 @@ $textEndColumns = ['total', 'paid_amount', 'balance'];
                     <?php endif; ?>
                 <?php endforeach; ?>
                 <td class="col-actions">
-                    <?php
-                    $patientCode = (string) $row['patient_code'];
-                    require BASE_PATH . '/views/partials/visit_list_actions.php';
-                    ?>
+                    <?php require BASE_PATH . '/views/partials/visit_list_actions.php'; ?>
                 </td>
             </tr>
         <?php endforeach; ?>

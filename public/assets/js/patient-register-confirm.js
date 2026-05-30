@@ -25,6 +25,7 @@
     }
 
     var requiredMsg = form.getAttribute('data-msg-required') || 'required';
+    var addressMsg = form.getAttribute('data-msg-address') || 'Please enter a complete address.';
     var confirmMsg = form.getAttribute('data-msg-confirm') || '';
     var successTemplate = form.getAttribute('data-msg-success') || ':code';
     var confirmTitle = modalEl.getAttribute('data-confirm-title') || '';
@@ -245,7 +246,34 @@
 
         var addressInput = fieldControl('address');
         if (!addressInput || String(addressInput.value || '').trim().length < 5) {
-            fail('address');
+            showFieldError('address', addressMsg);
+            valid = false;
+            if (!firstInvalid) {
+                firstInvalid = addressInput;
+            }
+        }
+
+        var registeredAtInput = fieldControl('registered_at');
+        var registeredAt = registeredAtInput ? String(registeredAtInput.value || '').trim() : '';
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (registeredAt === '') {
+            fail('registered_at');
+        } else {
+            var parts = registeredAt.split('-');
+            if (parts.length !== 3) {
+                fail('registered_at');
+            } else {
+                var picked = new Date(
+                    parseInt(parts[0], 10),
+                    parseInt(parts[1], 10) - 1,
+                    parseInt(parts[2], 10)
+                );
+                picked.setHours(0, 0, 0, 0);
+                if (Number.isNaN(picked.getTime()) || picked > today) {
+                    fail('registered_at');
+                }
+            }
         }
 
         if (paymentSection && paymentDetailsVisible()) {

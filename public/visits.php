@@ -7,9 +7,28 @@ load_model('Visit');
 load_model('Medicine');
 load_model('Patient');
 load_model('PaymentSettings');
+load_model('Courier');
 
 auth_require();
 auth_require_role(['receptionist', 'manager', 'admin']);
+
+if (($_GET['action'] ?? '') === 'visit_detail' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $visitId = filter_var($_GET['visit_id'] ?? '', FILTER_VALIDATE_INT);
+    $visit = $visitId !== false && $visitId > 0 ? Visit::findById((int) $visitId) : null;
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    if ($visit === null) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'message' => __('visit.error.not_found')], JSON_THROW_ON_ERROR);
+
+        exit;
+    }
+
+    echo json_encode(visit_detail_response($visit), JSON_THROW_ON_ERROR);
+
+    exit;
+}
 
 $pageTitle = __('visits.list.title');
 $successMessage = flash_get('success');

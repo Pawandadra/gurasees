@@ -39,9 +39,11 @@
     var summaryCourierBase = document.getElementById('summaryCourierBase');
     var summaryGrandTotal = document.getElementById('summaryGrandTotal');
     var courierSummaryRows = root.querySelectorAll('.visit-billing-courier-row');
+    var deliveryMethodGroup = document.getElementById('visitDeliveryMethodGroup');
 
     var cart = {};
     var activeIndex = -1;
+    var deliveryMethod = 'self';
 
     function cartLine(id) {
         var entry = cart[String(id)];
@@ -112,6 +114,61 @@
         return Object.keys(cart).some(function (id) {
             return cartCourier(id);
         });
+    }
+
+    function isRemoteDelivery(method) {
+        method = method || deliveryMethod;
+        return method === 'by_bus' || method === 'courier';
+    }
+
+    function getDeliveryMethodInputs() {
+        return deliveryMethodGroup
+            ? deliveryMethodGroup.querySelectorAll('input[name="delivery_method"]')
+            : [];
+    }
+
+    function syncDeliveryMethodRadios() {
+        getDeliveryMethodInputs().forEach(function (input) {
+            input.checked = input.value === deliveryMethod;
+        });
+    }
+
+    function setAllCartCourier(checked) {
+        Object.keys(cart).forEach(function (id) {
+            setCartLine(id, cartQty(id), checked);
+        });
+    }
+
+    function setDeliveryMethod(method, options) {
+        options = options || {};
+        if (method !== 'self' && method !== 'by_bus' && method !== 'courier') {
+            method = 'self';
+        }
+        var previousMethod = deliveryMethod;
+        deliveryMethod = method;
+        syncDeliveryMethodRadios();
+
+        if (!options.skipApplyAll) {
+            if (method === 'self') {
+                setAllCartCourier(false);
+            } else if (isRemoteDelivery(method) && !isRemoteDelivery(previousMethod)) {
+                setAllCartCourier(true);
+            }
+        }
+
+        if (!options.skipRender) {
+            renderCart();
+        }
+    }
+
+    function syncDeliveryMethodFromCart() {
+        if (hasCourierItems()) {
+            if (deliveryMethod === 'self') {
+                setDeliveryMethod('courier', { skipApplyAll: true, skipRender: true });
+            }
+        } else if (isRemoteDelivery()) {
+            setDeliveryMethod('self', { skipApplyAll: true, skipRender: true });
+        }
     }
 
     function courierSubtotal() {
@@ -273,6 +330,7 @@
                     return;
                 }
                 setCartLine(medId, cartQty(medId), input.checked);
+                syncDeliveryMethodFromCart();
                 renderCart();
             });
         });
@@ -283,9 +341,8 @@
                 if (medId) {
                     delete cart[medId];
                 }
+                syncDeliveryMethodFromCart();
                 renderCart();
-                syncHiddenInputs();
-                updateSummary();
             });
         });
 
@@ -311,6 +368,8 @@
         });
 
         var next = !allChecked;
+        setDeliveryMethod(next ? 'courier' : 'self', { skipApplyAll: true, skipRender: true });
+
         boxes.forEach(function (b) {
             b.checked = next;
             var medId = b.getAttribute('data-id');
@@ -334,6 +393,23 @@
         // If any older data/logic appended a missing number it can show up as "+NaN" in the UI.
         name = name.replace(/\s*\+\s*NaN\s*$/i, '').trim();
         return name;
+    }
+
+    function highlightActiveItem(items) {
+        items.forEach(function (el, i) {
+            var on = i === activeIndex;
+            el.classList.toggle('active', on);
+            if (on) {
+                el.setAttribute('aria-selected', 'true');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.removeAttribute('aria-selected');
+            }
+        });
+    }
+
+    function isDropdownOpen() {
+        return Boolean(searchResults && !searchResults.hidden);
     }
 
     function hideSearchResults() {
@@ -370,7 +446,8 @@
 
     function addMedicine(id) {
         var key = String(id);
-        setCartLine(key, cartQty(key) + 1, cartCourier(key));
+        var courier = isRemoteDelivery() ? true : cartCourier(key);
+        setCartLine(key, cartQty(key) + 1, courier);
         renderCart();
         if (searchInput) {
             searchInput.value = '';
@@ -383,18 +460,18 @@
             return;
         }
         searchResults.innerHTML = '';
-        activeIndex = -1;
 
         if (results.length === 0) {
             var empty = document.createElement('div');
             empty.className = 'visit-medicine-search-empty';
             empty.textContent = root.getAttribute('data-label-empty') || 'No medicines found';
             searchResults.appendChild(empty);
+            activeIndex = -1;
             showSearchResults();
             return;
         }
 
-        results.forEach(function (item, index) {
+        results.forEach(function (item) {
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'visit-medicine-search-item';
@@ -416,46 +493,110 @@
         showSearchResults();
     }
 
+    function openDropdown() {
+        renderSearchResults(filterMedicines(searchInput.value));
+        var items = searchResults.querySelectorAll('.visit-medicine-search-item');
+        if (items.length > 0) {
+            activeIndex = 0;
+            highlightActiveItem(items);
+        }
+    }
+
+    function refreshDropdown() {
+        if (!searchInput || !isDropdownOpen()) {
+            return;
+        }
+
+        renderSearchResults(filterMedicines(searchInput.value));
+
+        var items = searchResults.querySelectorAll('.visit-medicine-search-item');
+        if (items.length === 0) {
+            activeIndex = -1;
+            return;
+        }
+
+        if (activeIndex >= items.length) {
+            activeIndex = items.length - 1;
+        }
+        if (activeIndex < 0) {
+            activeIndex = 0;
+        }
+        highlightActiveItem(items);
+    }
+
     if (searchInput) {
         var searchWrap = document.getElementById('visitMedicineSearchWrap');
 
-        function showFilteredResults() {
-            renderSearchResults(filterMedicines(searchInput.value));
-        }
-
-        searchInput.addEventListener('input', showFilteredResults);
-        searchInput.addEventListener('focus', showFilteredResults);
-        searchInput.addEventListener('click', showFilteredResults);
-
-        searchInput.addEventListener('keydown', function (event) {
-            if (!searchResults || searchResults.hidden) {
+        searchInput.addEventListener('input', function () {
+            if (!isDropdownOpen()) {
+                openDropdown();
                 return;
             }
-            var items = searchResults.querySelectorAll('.visit-medicine-search-item');
-            if (items.length === 0) {
-                return;
-            }
-            if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                activeIndex = Math.min(activeIndex + 1, items.length - 1);
-            } else if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                activeIndex = Math.max(activeIndex - 1, 0);
-            } else if (event.key === 'Enter') {
-                event.preventDefault();
-                var pickIndex = activeIndex >= 0 ? activeIndex : 0;
-                items[pickIndex].click();
-                return;
-            } else if (event.key === 'Escape') {
-                hideSearchResults();
-                return;
-            } else {
-                return;
-            }
-            items.forEach(function (el, i) {
-                el.classList.toggle('active', i === activeIndex);
-            });
+            refreshDropdown();
         });
+        searchInput.addEventListener('focus', openDropdown);
+        searchInput.addEventListener('click', function () {
+            if (!isDropdownOpen()) {
+                openDropdown();
+            }
+        });
+
+        searchInput.addEventListener(
+            'keydown',
+            function (event) {
+                if (!isDropdownOpen()) {
+                    if (event.key === 'ArrowDown' || event.key === 'Enter') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openDropdown();
+                    }
+                    return;
+                }
+
+                var items = searchResults.querySelectorAll('.visit-medicine-search-item');
+                if (items.length === 0) {
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        hideSearchResults();
+                    }
+                    return;
+                }
+
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    activeIndex = activeIndex < 0 ? 0 : Math.min(activeIndex + 1, items.length - 1);
+                    highlightActiveItem(items);
+                    return;
+                }
+
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    activeIndex = activeIndex < 0 ? items.length - 1 : Math.max(activeIndex - 1, 0);
+                    highlightActiveItem(items);
+                    return;
+                }
+
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (activeIndex < 0) {
+                        activeIndex = 0;
+                    }
+                    items[activeIndex].click();
+                    return;
+                }
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    hideSearchResults();
+                }
+            },
+            true
+        );
 
         if (searchWrap) {
             searchWrap.addEventListener('search-dropdown:close', hideSearchResults);
@@ -494,8 +635,24 @@
         }
     });
 
-    renderCart();
+    var initialMethod = 'self';
+    if (deliveryMethodGroup) {
+        initialMethod = deliveryMethodGroup.getAttribute('data-initial') || 'self';
+        if (initialMethod !== 'self' && initialMethod !== 'by_bus' && initialMethod !== 'courier') {
+            initialMethod = 'self';
+        }
+    }
+    setDeliveryMethod(initialMethod, { skipApplyAll: true });
+
     updateSummary();
+
+    getDeliveryMethodInputs().forEach(function (input) {
+        input.addEventListener('change', function () {
+            if (input.checked) {
+                setDeliveryMethod(input.value);
+            }
+        });
+    });
 
     var form = root.closest('form');
     if (form) {

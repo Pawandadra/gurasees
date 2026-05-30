@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS visits (
     patient_id INT UNSIGNED NOT NULL,
     visited_at DATETIME NOT NULL,
     notes TEXT NULL,
+    delivery_method ENUM('self', 'by_bus', 'courier') NOT NULL DEFAULT 'self',
     visit_charge DECIMAL(10, 2) NOT NULL DEFAULT 0,
     visit_gst DECIMAL(10, 2) NOT NULL DEFAULT 0,
     medicine_total DECIMAL(10, 2) NOT NULL DEFAULT 0,

@@ -18,10 +18,12 @@ $courierStatus = (string) ($visit['courier_status'] ?? '');
         <dt><?= e(__('visit.field.datetime')) ?></dt>
         <dd><?= e(Visit::formatVisitedAt((string) $visit['visited_at'])) ?></dd>
     </div>
-    <div class="patient-detail-item">
-        <dt><?= e(__('visit.field.medicines')) ?></dt>
-        <dd><?= table_cell(Visit::formatMedicineSummary($lines)) ?></dd>
-    </div>
+    <?php foreach (Visit::medicineDetailSections($visit, $lines) as $medicineSection): ?>
+        <div class="patient-detail-item">
+            <dt><?= e($medicineSection['label']) ?></dt>
+            <dd><?= table_cell(Visit::formatMedicineSummary($medicineSection['lines'])) ?></dd>
+        </div>
+    <?php endforeach; ?>
     <div class="patient-detail-item">
         <dt><?= e(__('visit.field.visit_charge')) ?></dt>
         <dd><?= e(Medicine::formatPriceDisplay($visitChargeIncl)) ?></dd>

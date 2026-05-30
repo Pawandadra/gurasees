@@ -342,8 +342,9 @@ final class Report
     private static function visitAggregates(array $filters, string $period): array
     {
         $date = self::dateClause('v.visited_at', $filters, $period);
-        $where = array_merge(['p.patient_code IS NOT NULL'], $date['where']);
-        $bind = $date['bind'];
+        $deliveryFilter = self::reportDeliveryMethodFilter($filters);
+        $where = array_merge(['p.patient_code IS NOT NULL'], $date['where'], $deliveryFilter['where']);
+        $bind = array_merge($date['bind'], $deliveryFilter['bind']);
         $whereSql = implode(' AND ', $where);
         $fromSql = ' FROM visits v INNER JOIN patients p ON p.id = v.patient_id WHERE ' . $whereSql;
 
@@ -354,7 +355,7 @@ final class Report
                 COALESCE(SUM(v.visit_charge + v.visit_gst), 0) AS visit_charges,
                 COALESCE(SUM(v.medicine_total + v.medicine_gst), 0) AS medicine_charges,
                 COALESCE(SUM(v.courier_charge + v.courier_gst), 0) AS courier_charges,
-                SUM(CASE WHEN v.courier_status IS NOT NULL THEN 1 ELSE 0 END) AS courier_visits,
+                SUM(CASE WHEN ' . Visit::remoteDeliveryPackageSql('v') . ' THEN 1 ELSE 0 END) AS courier_visits,
                 SUM(CASE WHEN v.payment_status = :paid THEN 1 ELSE 0 END) AS paid_count,
                 SUM(CASE WHEN v.payment_status = :pending THEN 1 ELSE 0 END) AS pending_count,
                 SUM(CASE WHEN v.payment_status = :partial THEN 1 ELSE 0 END) AS partial_count' . $fromSql
@@ -405,16 +406,17 @@ final class Report
     private static function courierAggregates(array $filters, string $period): array
     {
         $date = self::dateClause('v.visited_at', $filters, $period);
+        $deliveryFilter = self::reportDeliveryMethodFilter($filters, true);
         $where = array_merge([
             'p.patient_code IS NOT NULL',
-            'v.courier_status IS NOT NULL',
-        ], $date['where']);
-        $bind = $date['bind'];
+            Visit::remoteDeliveryPackageSql('v'),
+        ], $date['where'], $deliveryFilter['where']);
+        $bind = array_merge($date['bind'], $deliveryFilter['bind']);
 
         $stmt = db()->prepare(
             'SELECT
                 COUNT(*) AS package_count,
-                SUM(CASE WHEN v.courier_status = :pending THEN 1 ELSE 0 END) AS pending_count,
+                SUM(CASE WHEN v.courier_status = :pending OR v.courier_status IS NULL THEN 1 ELSE 0 END) AS pending_count,
                 SUM(CASE WHEN v.courier_status = :sent THEN 1 ELSE 0 END) AS sent_count,
                 SUM(CASE WHEN v.courier_status = :canceled THEN 1 ELSE 0 END) AS canceled_count,
                 COALESCE(SUM(v.courier_charge + v.courier_gst), 0) AS courier_revenue
@@ -593,8 +595,9 @@ final class Report
     private static function visitRows(array $filters, string $period, int $limit): array
     {
         $date = self::dateClause('v.visited_at', $filters, $period);
-        $where = array_merge(['p.patient_code IS NOT NULL'], $date['where']);
-        $bind = $date['bind'];
+        $deliveryFilter = self::reportDeliveryMethodFilter($filters);
+        $where = array_merge(['p.patient_code IS NOT NULL'], $date['where'], $deliveryFilter['where']);
+        $bind = array_merge($date['bind'], $deliveryFilter['bind']);
         $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
 
         // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
@@ -609,7 +612,7 @@ final class Report
         $total = (int) (($countStmt->fetch()['total'] ?? 0));
 
         $stmt = db()->prepare(
-            'SELECT v.id, v.visited_at, v.notes, p.patient_code, p.name AS patient_name, p.phone,
+            'SELECT v.id, v.visited_at, v.notes, v.delivery_method, p.patient_code, p.name AS patient_name, p.phone,
                     p.age, p.gender,
                     v.grand_total, v.visit_charge, v.visit_gst,
                     v.medicine_total, v.medicine_gst,
@@ -632,6 +635,7 @@ final class Report
             $visitId = (int) $row['id'];
             $grandTotal = round((float) $row['grand_total'], 2);
             $paid = Visit::paymentPaidAmount($row);
+            $deliveryFields = self::deliveryMethodRowFields($row);
             $rows[] = [
                 'visited_at' => (string) $row['visited_at'],
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
@@ -639,6 +643,8 @@ final class Report
                 'phone' => (string) $row['phone'],
                 'age' => (int) $row['age'],
                 'gender' => (string) $row['gender'],
+                'delivery_method' => $deliveryFields['delivery_method'],
+                'delivery_method_label' => $deliveryFields['delivery_method_label'],
                 'grand_total' => $grandTotal,
                 'visit_charges' => round((float) $row['visit_charge'] + (float) $row['visit_gst'], 2),
                 'medicine_charges' => round((float) $row['medicine_total'] + (float) $row['medicine_gst'], 2),
@@ -758,11 +764,12 @@ final class Report
     private static function courierRows(array $filters, string $period, int $limit): array
     {
         $date = self::dateClause('v.visited_at', $filters, $period);
+        $deliveryFilter = self::reportDeliveryMethodFilter($filters, true);
         $where = array_merge([
             'p.patient_code IS NOT NULL',
-            'v.courier_status IS NOT NULL',
-        ], $date['where']);
-        $bind = $date['bind'];
+            Visit::remoteDeliveryPackageSql('v'),
+        ], $date['where'], $deliveryFilter['where']);
+        $bind = array_merge($date['bind'], $deliveryFilter['bind']);
         $lim = max(1, min($limit, self::DETAIL_LIMIT_CSV));
 
         // Avoid window functions (COUNT(*) OVER()) for older MySQL versions.
@@ -777,7 +784,7 @@ final class Report
         $total = (int) (($countStmt->fetch()['total'] ?? 0));
 
         $stmt = db()->prepare(
-            'SELECT v.id, v.visited_at, v.courier_status, v.courier_dispatched_at,
+            'SELECT v.id, v.visited_at, v.delivery_method, v.courier_status, v.courier_dispatched_at,
                     v.courier_charge, v.courier_gst,
                     p.patient_code, p.name AS patient_name, p.phone,
                     p.delivery_address
@@ -790,12 +797,15 @@ final class Report
         $stmt->execute($bind);
         $rows = [];
         foreach ($stmt->fetchAll() as $row) {
+            $deliveryFields = self::deliveryMethodRowFields($row, Visit::DELIVERY_COURIER);
             $rows[] = [
                 'visited_at' => (string) $row['visited_at'],
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
                 'patient_name' => (string) $row['patient_name'],
                 'phone' => (string) $row['phone'],
                 'delivery_address' => (string) ($row['delivery_address'] ?? ''),
+                'delivery_method' => $deliveryFields['delivery_method'],
+                'delivery_method_label' => $deliveryFields['delivery_method_label'],
                 'courier_status' => (string) ($row['courier_status'] ?? ''),
                 'courier_dispatched_at' => (string) ($row['courier_dispatched_at'] ?? ''),
                 'courier_charge' => round((float) $row['courier_charge'] + (float) $row['courier_gst'], 2),
@@ -867,6 +877,7 @@ final class Report
             __('patient.field.phone'),
             __('patient.field.age'),
             __('patient.field.gender'),
+            __('visit.form.delivery_method'),
             __('report.col.total'),
             __('report.metric.visit_charges'),
             __('report.metric.medicine_charges'),
@@ -887,6 +898,7 @@ final class Report
                 phone_format_display((string) $row['phone']),
                 $row['age'],
                 Patient::genderLabel($row['gender']),
+                $row['delivery_method_label'],
                 $row['grand_total'],
                 $row['visit_charges'],
                 $row['medicine_charges'],
@@ -985,6 +997,7 @@ final class Report
             __('patient.field.name'),
             __('patient.field.phone'),
             __('patient.field.delivery_address'),
+            __('visit.form.delivery_method'),
             __('courier.field.status'),
             __('courier.field.dispatched_at'),
             __('report.metric.courier_charges'),
@@ -997,6 +1010,7 @@ final class Report
                 $row['patient_name'],
                 phone_format_display((string) $row['phone']),
                 $row['delivery_address'],
+                $row['delivery_method_label'],
                 Courier::statusLabel($row['courier_status']),
                 $row['courier_dispatched_at'] !== ''
                     ? Visit::formatVisitedAt((string) $row['courier_dispatched_at'])
@@ -1142,6 +1156,37 @@ final class Report
         }
 
         return ['where' => $where, 'bind' => $bind];
+    }
+
+    /**
+     * @param array{delivery_method?: string} $filters
+     * @return array{where: list<string>, bind: array<string, string>}
+     */
+    private static function reportDeliveryMethodFilter(array $filters, bool $remoteOnly = false): array
+    {
+        $method = Visit::normalizeDeliveryMethodFilter((string) ($filters['delivery_method'] ?? ''), $remoteOnly);
+        if ($method === '') {
+            return ['where' => [], 'bind' => []];
+        }
+
+        return [
+            'where' => ['v.delivery_method = :delivery_method'],
+            'bind' => ['delivery_method' => $method],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array{delivery_method: string, delivery_method_label: string}
+     */
+    private static function deliveryMethodRowFields(array $row, string $default = Visit::DELIVERY_SELF): array
+    {
+        $deliveryMethod = (string) ($row['delivery_method'] ?? $default);
+
+        return [
+            'delivery_method' => $deliveryMethod,
+            'delivery_method_label' => Visit::deliveryMethodLabel($deliveryMethod),
+        ];
     }
 
     private static function nextDayStart(string $ymd): string

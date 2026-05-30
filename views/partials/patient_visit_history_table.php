@@ -47,8 +47,12 @@ $showPaidColumn = Visit::listHasPartialPayment($visits);
             $paymentStatus = (string) ($visit['payment_status'] ?? '');
             $notes = trim((string) ($visit['notes'] ?? ''));
             $balance = Visit::paymentBalance($visit);
+            $rowClass = 'patient-visit-history-row' . ($visitId > 0 ? ' visit-detail-row' : '');
+            $rowData = $visitId > 0
+                ? ' data-visit-id="' . e((string) $visitId) . '" data-patient-code="' . e($code) . '" tabindex="0" role="button" aria-label="' . e(__('visit.detail.view')) . '"'
+                : '';
             ?>
-            <tr class="patient-visit-history-row">
+            <tr class="<?= e($rowClass) ?>"<?= $rowData ?>>
                 <td class="small visit-history-medicines">
                     <?= table_cell(Visit::formatMedicineSummary($lines)) ?>
                 </td>
@@ -96,6 +100,7 @@ $showPaidColumn = Visit::listHasPartialPayment($visits);
                     <?php if ($visitId > 0): ?>
                         <button type="button" class="patient-action-btn patient-action-view visit-detail-trigger"
                                 data-visit-id="<?= e((string) $visitId) ?>"
+                                data-patient-code="<?= e($code) ?>"
                                 title="<?= e(__('visit.detail.view')) ?>"
                                 aria-label="<?= e(__('visit.detail.view')) ?>">
                             <?php require BASE_PATH . '/views/partials/icons/view.php'; ?>

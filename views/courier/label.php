@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 $lines = $package['courier_lines'] ?? [];
 $fromPhone = trim($sender['phone']);
+$deliveryMethodLabel = (string) ($package['delivery_method_label'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,16 +51,20 @@ $fromPhone = trim($sender['phone']);
             <?php endif; ?>
         </section>
 
-        <?php if ($lines !== []): ?>
-            <section class="courier-label-section courier-label-medicines-section">
+        <section class="courier-label-section courier-label-medicines-section">
+            <p class="courier-label-delivery-method">
+                <span class="courier-label-meta-key"><?= e(__('visit.form.delivery_method')) ?>:</span>
+                <strong><?= e($deliveryMethodLabel) ?></strong>
+            </p>
+            <?php if ($lines !== []): ?>
                 <h2 class="courier-label-section-title"><?= e(__('courier.field.medicines')) ?></h2>
                 <ul class="courier-label-medicines list-unstyled mb-0">
                     <?php foreach ($lines as $line): ?>
                         <li><?= e($line['name']) ?> <strong>×<?= (int) $line['quantity'] ?></strong></li>
                     <?php endforeach; ?>
                 </ul>
-            </section>
-        <?php endif; ?>
+            <?php endif; ?>
+        </section>
     </article>
 
     <div class="courier-label-toolbar no-print">

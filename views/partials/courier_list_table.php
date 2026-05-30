@@ -52,11 +52,18 @@ $sortFilterQuery = $sortFilterQuery ?? [];
             }
             $lines = $row['courier_lines'] ?? [];
             $courierStatus = (string) ($row['courier_status'] ?? Courier::STATUS_PENDING);
+            $visitId = (int) $row['visit_id'];
+            $viewUrl = base_url('/courier_view.php?' . http_build_query(array_merge(
+                ['visit_id' => $visitId],
+                patient_build_list_query($sort, $dir, $sortFilterQuery)
+            )));
             ?>
-            <tr>
+            <tr class="reception-table-row-link" data-href="<?= e($viewUrl) ?>" tabindex="0" role="link"
+                aria-label="<?= e(__('courier.action.view')) ?>">
                 <td><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
                 <td><?= e((string) $row['patient_name']) ?></td>
                 <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                <td class="text-nowrap small"><?= e((string) ($row['delivery_method_label'] ?? '')) ?></td>
                 <td>
                     <span class="courier-status-badge courier-status-<?= e($courierStatus) ?>">
                         <?= e(Courier::statusLabel($courierStatus)) ?>
@@ -66,7 +73,7 @@ $sortFilterQuery = $sortFilterQuery ?? [];
                 <td class="small visit-history-medicines"><?= table_cell(Courier::formatMedicineSummary($lines)) ?></td>
                 <td class="text-nowrap small"><?= e(Visit::formatVisitedTime((string) $row['visited_at'])) ?></td>
                 <td class="text-end col-actions">
-                    <?php $visitId = (int) $row['visit_id']; require BASE_PATH . '/views/partials/courier_actions.php'; ?>
+                    <?php require BASE_PATH . '/views/partials/courier_actions.php'; ?>
                 </td>
             </tr>
         <?php endforeach; ?>

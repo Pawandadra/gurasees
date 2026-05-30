@@ -36,6 +36,7 @@ $visitOld = array_merge(
     [
         'visited_at' => (new DateTimeImmutable('now'))->format('Y-m-d\TH:i'),
         'notes' => '',
+        'delivery_method' => Visit::DELIVERY_SELF,
         'visit_charge' => $visitBilling['visit_charge'],
         'medicine_total' => '',
         'courier_charge' => '',
@@ -81,21 +82,7 @@ if (($_GET['action'] ?? '') === 'visit_detail' && $_SERVER['REQUEST_METHOD'] ===
         exit;
     }
 
-    $canModify = Visit::canModify($visit);
-    ob_start();
-    require dirname(__DIR__) . '/views/partials/visit_detail_body.php';
-    $html = ob_get_clean();
-
-    echo json_encode([
-        'ok' => true,
-        'html' => $html,
-        'canEdit' => $canModify,
-        'canDelete' => $canModify,
-        'editUrl' => base_url('/patient_view.php?' . http_build_query([
-            'code' => $code,
-            'edit_visit' => (int) $visit['id'],
-        ])),
-    ], JSON_THROW_ON_ERROR);
+    echo json_encode(visit_detail_response($visit), JSON_THROW_ON_ERROR);
 
     exit;
 }
@@ -119,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $visitOld = array_merge($visitOld, [
             'visited_at' => (string) ($_POST['visited_at'] ?? $visitOld['visited_at']),
             'notes' => input_string($_POST['notes'] ?? '', 500),
+            'delivery_method' => Visit::parseDeliveryMethod($_POST),
             'visit_charge' => trim((string) ($_POST['visit_charge'] ?? $visitOld['visit_charge'])),
             'medicine_total' => trim((string) ($_POST['medicine_total'] ?? '')),
             'courier_charge' => trim((string) ($_POST['courier_charge'] ?? '')),
@@ -157,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $visitOld = array_merge($visitOld, [
             'visited_at' => (string) ($_POST['visited_at'] ?? $visitOld['visited_at']),
             'notes' => input_string($_POST['notes'] ?? '', 500),
+            'delivery_method' => Visit::parseDeliveryMethod($_POST),
             'visit_charge' => trim((string) ($_POST['visit_charge'] ?? $visitOld['visit_charge'])),
             'medicine_total' => trim((string) ($_POST['medicine_total'] ?? '')),
             'courier_charge' => trim((string) ($_POST['courier_charge'] ?? '')),

@@ -27,6 +27,7 @@ $visitColumns = [
     'gender' => __('patient.field.gender'),
     'phone' => __('patient.field.phone'),
     'medicines' => __('visit.field.medicines'),
+    'delivery_method' => __('visit.form.delivery_method'),
     'total' => __('visit.field.grand_total'),
     'payment_method' => __('payment.field.method'),
     'payment_status' => __('payment.field.status'),
@@ -79,6 +80,17 @@ ob_start();
                     <label for="visit_filter_date" class="form-label"><?= e(__('visits.list.visit_date')) ?></label>
                     <input type="date" class="form-control" id="visit_filter_date" name="visit_date"
                            value="<?= e($filterState['visit_date']) ?>">
+                </div>
+                <div class="patient-list-filter-gender">
+                    <label for="visit_filter_delivery_method" class="form-label"><?= e(__('visit.form.delivery_method')) ?></label>
+                    <select class="form-select" id="visit_filter_delivery_method" name="delivery_method">
+                        <option value=""><?= e(__('visits.list.delivery_all')) ?></option>
+                        <?php foreach (Visit::deliveryMethodOptions() as $value => $labelKey): ?>
+                            <option value="<?= e($value) ?>"<?= $filterState['delivery_method'] === $value ? ' selected' : '' ?>>
+                                <?= e(__($labelKey)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="patient-list-filter-actions">
                     <button type="submit" class="btn btn-reception-primary"><?= e(__('patients.list.apply')) ?></button>
@@ -142,9 +154,15 @@ ob_start();
         <?php endif; ?>
     </section>
 
+    <?php
+    $visitDetailBase = base_url('/visits.php');
+    require BASE_PATH . '/views/partials/visit_detail_modal.php';
+    ?>
+
 <?php endif; ?>
 <?php
 $content = ob_get_clean();
 $activeNav = 'visits';
+$pageScripts = ['assets/js/patient-visit-detail.js'];
 
-view('layouts/dashboard', compact('pageTitle', 'content', 'activeNav'));
+view('layouts/dashboard', compact('pageTitle', 'content', 'activeNav', 'pageScripts'));

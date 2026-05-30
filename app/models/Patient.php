@@ -15,7 +15,7 @@ final class Patient
     {
         $data = self::sanitize($raw);
         $payment = PaymentSettings::sanitizeRegistration($raw);
-        $errors = self::validate($data);
+        $errors = self::validate($data, true);
         if ($payment !== null) {
             $errors = array_merge($errors, PaymentSettings::validateRegistration($payment));
         }
@@ -36,13 +36,17 @@ final class Patient
         $pdo->beginTransaction();
 
         try {
+            $registeredAt = self::registrationTimestamp($data['registered_at']);
+
             $stmt = $pdo->prepare(
                 'INSERT INTO patients (
                     name, age, gender, phone, address, delivery_address, remarks,
-                    payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount
+                    payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount,
+                    created_at
                  ) VALUES (
                     :name, :age, :gender, :phone, :address, :delivery_address, :remarks,
-                    :payment_amount, :payment_gst_amount, :payment_method, :payment_status, :payment_paid_amount
+                    :payment_amount, :payment_gst_amount, :payment_method, :payment_status, :payment_paid_amount,
+                    :created_at
                  )'
             );
             $stmt->execute([
@@ -60,6 +64,7 @@ final class Patient
                 'payment_paid_amount' => $payment !== null && $payment['payment_status'] !== null
                     ? $payment['payment_paid_amount']
                     : null,
+                'created_at' => $registeredAt,
             ]);
 
             $id = (int) $pdo->lastInsertId();
@@ -235,16 +240,27 @@ final class Patient
         }
 
         $activityAt = 'COALESCE(lv.last_visited_at, p.created_at)';
-        $dateFrom = (string) ($filters['date_from'] ?? '');
-        if ($dateFrom !== '') {
-            $parts[] = "{$activityAt} >= :date_from";
-            $bind['date_from'] = $dateFrom . ' 00:00:00';
-        }
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
 
-        $dateTo = (string) ($filters['date_to'] ?? '');
-        if ($dateTo !== '') {
-            $parts[] = "{$activityAt} <= :date_to";
-            $bind['date_to'] = $dateTo . ' 23:59:59';
+        if ($dateFrom !== '' || $dateTo !== '') {
+            if ($dateFrom !== '' && $dateTo === '') {
+                $parts[] = "{$activityAt} >= :date_from AND {$activityAt} < :date_from_end";
+                $bind['date_from'] = $dateFrom . ' 00:00:00';
+                $bind['date_from_end'] = self::nextDayStart($dateFrom);
+            } else {
+                if ($dateFrom !== '' && $dateTo !== '' && $dateFrom > $dateTo) {
+                    [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+                }
+                if ($dateFrom !== '') {
+                    $parts[] = "{$activityAt} >= :date_from";
+                    $bind['date_from'] = $dateFrom . ' 00:00:00';
+                }
+                if ($dateTo !== '') {
+                    $parts[] = "{$activityAt} < :date_to_end";
+                    $bind['date_to_end'] = self::nextDayStart($dateTo);
+                }
+            }
         }
 
         return ['sql' => implode(' AND ', $parts), 'bind' => $bind];
@@ -423,6 +439,9 @@ final class Patient
     {
         $data = self::sanitize($raw);
         $data['age'] = $data['age'] > 0 ? (string) $data['age'] : '';
+        if (array_key_exists('registered_at', $raw) && ($data['registered_at'] ?? '') === '') {
+            $data['registered_at'] = (new DateTimeImmutable('today'))->format('Y-m-d');
+        }
         $data['symptoms'] = array_map(
             static fn(int $id): string => (string) $id,
             self::parseSymptomIds($raw)
@@ -649,7 +668,7 @@ final class Patient
         }
 
         $data = self::sanitize($raw);
-        $errors = self::validate($data);
+        $errors = self::validate($data, false);
         if ($errors !== []) {
             return ['ok' => false, 'errors' => $errors];
         }
@@ -757,7 +776,7 @@ final class Patient
 
     /**
      * @param array<string, mixed> $raw
-     * @return array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string, remarks: string}
+     * @return array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string, remarks: string, registered_at: string}
      */
     public static function sanitize(array $raw): array
     {
@@ -786,14 +805,15 @@ final class Patient
             'address' => $address,
             'delivery_address' => $deliveryAddress,
             'remarks' => input_string($raw['remarks'] ?? '', 1000),
+            'registered_at' => patient_normalize_filter_date($raw['registered_at'] ?? null),
         ];
     }
 
     /**
-     * @param array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string, remarks: string} $data
+     * @param array{name: string, age: int, gender: string, phone: string, phone_iso: string, phone_local: string, address: string, delivery_address: string, remarks: string, registered_at?: string} $data
      * @return array<string, string>
      */
-    public static function validate(array $data): array
+    public static function validate(array $data, bool $forRegistration = false): array
     {
         $errors = [];
         $required = __('validation.required');
@@ -815,10 +835,30 @@ final class Patient
         }
 
         if (mb_strlen($data['address']) < 5) {
-            $errors['address'] = $required;
+            $errors['address'] = __('patient.error.address');
+        }
+
+        if ($forRegistration) {
+            $registeredAt = (string) ($data['registered_at'] ?? '');
+            $today = (new DateTimeImmutable('today'))->format('Y-m-d');
+            if ($registeredAt === '') {
+                $errors['registered_at'] = __('patient.error.registered_at');
+            } elseif ($registeredAt > $today) {
+                $errors['registered_at'] = __('patient.error.registered_at_future');
+            }
         }
 
         return $errors;
+    }
+
+    private static function registrationTimestamp(string $date): string
+    {
+        $date = patient_normalize_filter_date($date);
+        if ($date === '') {
+            return (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+        }
+
+        return $date . ' 00:00:00';
     }
 
     /**
@@ -863,5 +903,14 @@ final class Patient
         $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
 
         return mb_strtolower($name, 'UTF-8');
+    }
+
+    private static function nextDayStart(string $ymd): string
+    {
+        $dt = DateTimeImmutable::createFromFormat('Y-m-d', $ymd);
+
+        return $dt !== false
+            ? $dt->modify('+1 day')->format('Y-m-d 00:00:00')
+            : $ymd . ' 23:59:59';
     }
 }

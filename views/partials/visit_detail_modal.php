@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-/** @var string $code */
+/** @var string|null $visitDetailBase */
 ?>
-<div class="modal fade" id="visitDetailModal" tabindex="-1" aria-labelledby="visitDetailModalLabel" aria-hidden="true">
+<div class="modal fade" id="visitDetailModal" tabindex="-1" aria-labelledby="visitDetailModalLabel" aria-hidden="true"<?= !empty($visitDetailBase) ? ' data-detail-base="' . e($visitDetailBase) . '"' : '' ?>>
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
@@ -17,7 +17,7 @@ declare(strict_types=1);
             <div class="modal-footer border-0 pt-0 visit-detail-modal-footer d-none" id="visitDetailModalFooter">
                 <form method="post" action="<?= e(base_url('/patient_view.php')) ?>" class="visit-delete-form me-auto" id="visitDeleteForm">
                     <?= csrf_field() ?>
-                    <input type="hidden" name="code" value="<?= e($code) ?>">
+                    <input type="hidden" name="code" value="<?= e((string) ($code ?? '')) ?>">
                     <input type="hidden" name="action" value="delete_visit">
                     <input type="hidden" name="visit_id" value="" id="visitDeleteId">
                     <button type="button" class="btn btn-outline-danger confirm-action-trigger" id="visitDeleteBtn"

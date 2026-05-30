@@ -43,8 +43,12 @@ $tableSortable = $tableSortable ?? true;
         </tr>
         </thead>
         <tbody>
-        <?php foreach ($patientRows as $row): ?>
-            <tr>
+        <?php foreach ($patientRows as $row):
+            $patientCode = (string) $row['patient_code'];
+            $viewUrl = base_url('/patient_view.php?' . http_build_query(['code' => $patientCode]) . '&' . patient_action_query($sort, $dir, $actionExtra));
+            ?>
+            <tr class="reception-table-row-link" data-href="<?= e($viewUrl) ?>" tabindex="0" role="link"
+                aria-label="<?= e(__('patient.action.view')) ?>">
                 <td<?= responsive_col_attr('patients', 'id') ?>><span class="patient-code"><?= e($row['patient_code']) ?></span></td>
                 <td<?= responsive_col_attr('patients', 'name') ?>><?= e($row['name']) ?></td>
                 <td<?= responsive_col_attr('patients', 'age') ?>><?= e((string) $row['age']) ?></td>
@@ -54,7 +58,6 @@ $tableSortable = $tableSortable ?? true;
                 <td<?= responsive_col_attr('patients', 'date') ?>><?= e(Patient::formatListLastVisited($row)) ?></td>
                 <td class="col-actions">
                     <?php
-                    $patientCode = (string) $row['patient_code'];
                     require BASE_PATH . '/views/partials/patient_actions.php';
                     ?>
                 </td>

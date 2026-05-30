@@ -8,14 +8,14 @@ declare(strict_types=1);
 /** @var string|null $errorMessage */
 /** @var string $sort */
 /** @var string $dir */
-/** @var array{q: string, status: string} $listFilters */
+/** @var array{q: string, status: string, delivery_method: string} $listFilters */
 /** @var array<string, scalar|null> $sortFilterQuery */
 /** @var bool $hasFilters */
 /** @var int $totalPackages */
 
 $sort = $sort ?? 'date';
 $dir = $dir ?? 'desc';
-$listFilters = $listFilters ?? ['q' => '', 'status' => ''];
+$listFilters = $listFilters ?? ['q' => '', 'status' => '', 'delivery_method' => ''];
 $sortFilterQuery = $sortFilterQuery ?? [];
 $hasFilters = $hasFilters ?? false;
 $totalPackages = $totalPackages ?? 0;
@@ -24,6 +24,7 @@ $courierColumns = [
     'patient_id' => __('patient.field.id'),
     'patient' => __('patient.field.name'),
     'phone' => __('patient.field.phone'),
+    'delivery_method' => __('visit.form.delivery_method'),
     'status' => __('courier.field.status'),
 ];
 
@@ -75,6 +76,17 @@ ob_start();
                         <option value="canceled"<?= $listFilters['status'] === Courier::STATUS_CANCELED ? ' selected' : '' ?>>
                             <?= e(__('courier.status.canceled')) ?>
                         </option>
+                    </select>
+                </div>
+                <div class="patient-list-filter-gender">
+                    <label for="courier_filter_delivery_method" class="form-label"><?= e(__('visit.form.delivery_method')) ?></label>
+                    <select class="form-select" id="courier_filter_delivery_method" name="delivery_method">
+                        <option value=""><?= e(__('courier.list.delivery_all')) ?></option>
+                        <?php foreach (Visit::remoteDeliveryMethodOptions() as $value => $labelKey): ?>
+                            <option value="<?= e($value) ?>"<?= $listFilters['delivery_method'] === $value ? ' selected' : '' ?>>
+                                <?= e(__($labelKey)) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="patient-list-filter-actions">

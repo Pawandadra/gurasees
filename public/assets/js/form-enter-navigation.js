@@ -269,6 +269,21 @@
         });
     }
 
+    var editForm = document.getElementById('patientEditForm');
+    if (editForm) {
+        attachFormEnterNavigation(editForm, {
+            advanceFromPhoneCountry: true,
+            submitButtonSelector: '#patientEditSubmitBtn',
+            skipSelectors: ['.patient-symptom-remove'],
+            skipDropdowns: [
+                {
+                    inputId: 'patientSymptomSearchInput',
+                    resultsId: 'patientSymptomSearchResults',
+                },
+            ],
+        });
+    }
+
     document.querySelectorAll('form.visit-log-form').forEach(function (form) {
         attachFormEnterNavigation(form, {
             cancelButtonSelector: '#patientVisitCancelBtn',

@@ -16,6 +16,7 @@ function patient_form_defaults(): array
         'delivery_same_as_address' => '',
         'remarks' => '',
         'symptoms' => [],
+        'registered_at' => (new DateTimeImmutable('today'))->format('Y-m-d'),
     ];
 
     if (!class_exists('PaymentSettings', false)) {

@@ -438,6 +438,15 @@
   align-items: start;
 }
 
+.courier-package-details .patient-detail-item {
+  grid-template-columns: minmax(7rem, 9.5rem) 1fr;
+  gap: 0.15rem 0.75rem;
+}
+
+.courier-package-details .patient-detail-list dt {
+  white-space: nowrap;
+}
+
 /* Patient symptom picker — search left, selected list right */
 .patient-symptom-picker-body {
   display: grid;
@@ -712,10 +721,28 @@
 
 .visit-list-filters-row {
   grid-template-columns:
-    minmax(0, 2fr)
-    minmax(0, 1fr)
-    minmax(0, 0.75fr)
+    minmax(0, 1.5fr)
+    minmax(0, 0.38fr)
+    minmax(0, 0.65fr)
+    minmax(0, 0.52fr)
     auto;
+}
+
+.visit-list-filters .patient-list-filter-gender .form-select,
+.visit-list-filters .patient-list-filter-medicine .form-select {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .visit-list-filters-row {
+    grid-template-columns:
+      minmax(10rem, 1fr)
+      minmax(6rem, 0.45fr)
+      minmax(7rem, 0.5fr)
+      minmax(6rem, 0.45fr)
+      auto;
+  }
 }
 
 .patient-list-filter-medicine .form-select {
@@ -804,6 +831,10 @@
   align-items: start;
 }
 
+.patient-row-1--register {
+  grid-template-columns: 9.5rem minmax(0, 1.35fr) 5.5rem 4.75rem minmax(0, 1fr);
+}
+
 .patient-field-gender .patient-gender-input {
   text-align: center;
   font-weight: 600;
@@ -826,6 +857,7 @@
 }
 
 .reception-form .form-control,
+.reception-form .form-select,
 .reception-form .phone-country-trigger,
 .reception-form .gender-toggle-group .btn {
   min-height: 2.5rem;
@@ -886,6 +918,33 @@
   border-color: var(--bs-form-invalid-border-color, #dc3545);
 }
 
+.visit-delivery-method-group {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.visit-delivery-method-group .btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 575.98px) {
+  .visit-delivery-method-group {
+    flex-direction: column;
+  }
+
+  .visit-delivery-method-group .btn {
+    width: 100%;
+    border-radius: 0.375rem !important;
+    margin-left: 0 !important;
+  }
+
+  .visit-delivery-method-group .btn + .btn {
+    margin-top: 0.5rem;
+  }
+}
+
 .reception-form .invalid-feedback.d-block {
   color: var(--bs-form-invalid-color, #dc3545);
 }
@@ -895,7 +954,11 @@
     grid-template-columns: 5.5rem 4.75rem minmax(0, 1fr);
   }
 
-  .patient-field-name {
+  .patient-row-1--register {
+    grid-template-columns: 9.5rem minmax(0, 1fr) 5.5rem 4.75rem minmax(0, 1fr);
+  }
+
+  .patient-row-1:not(.patient-row-1--register) .patient-field-name {
     grid-column: 1 / -1;
   }
 }
@@ -1370,6 +1433,70 @@ body.sidebar-open {
   width: 100%;
 }
 
+#patientVisitModal .patient-visit-modal-dialog {
+  --patient-visit-modal-width: min(1240px, calc(100vw - 1rem));
+  width: var(--patient-visit-modal-width);
+  max-width: var(--patient-visit-modal-width);
+}
+
+@media (min-width: 992px) {
+  #patientVisitModal .patient-visit-modal-dialog {
+    --patient-visit-modal-width: min(1240px, calc(100vw - 2rem));
+  }
+}
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+  #patientVisitModal.modal {
+    --bs-modal-margin: 0.5rem;
+  }
+
+  #patientVisitModal .visit-billing-summary-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(6.25rem, 7.5rem);
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  #patientVisitModal .visit-billing-summary-row dt,
+  #patientVisitModal .visit-billing-summary-row dd {
+    min-width: 0;
+  }
+
+  #patientVisitModal .visit-billing-summary-row dt {
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #patientVisitModal .visit-billing-summary-row dt .form-label {
+    display: block;
+    margin-bottom: 0;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  #patientVisitModal .visit-billing-summary-row dd {
+    justify-self: end;
+    width: 100%;
+    text-align: right;
+  }
+
+  #patientVisitModal .visit-billing-visit-charge-input-row .input-group,
+  #patientVisitModal .visit-billing-medicine-total-row .input-group,
+  #patientVisitModal .visit-billing-courier-total-row .input-group {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-end !important;
+  }
+
+  #patientVisitModal .visit-billing-visit-charge-input-row .visit-visit-charge-input,
+  #patientVisitModal .visit-medicine-total-input,
+  #patientVisitModal .visit-courier-charge-input {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
 #patientVisitModal .patient-visit-modal-body {
   padding-top: 0.25rem;
 }
@@ -1665,6 +1792,28 @@ body.sidebar-open {
   border: 1px solid rgba(108, 117, 125, 0.35);
 }
 
+.visit-delivery-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.visit-delivery-badge--by_bus {
+  background: rgba(13, 92, 77, 0.1);
+  color: var(--gaa-teal-dark);
+  border: 1px solid rgba(13, 92, 77, 0.22);
+}
+
+.visit-delivery-badge--courier {
+  background: rgba(13, 110, 253, 0.1);
+  color: #084298;
+  border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
 .payment-summary-card {
   padding: 0.75rem 0.85rem;
   border-radius: 0.5rem;
@@ -1732,6 +1881,39 @@ body.sidebar-open {
 
 .report-toolbar-card {
   padding: 0.65rem 0.85rem;
+}
+
+.report-filters-form .report-date-range-row {
+  align-items: end;
+}
+
+.report-filters-form .report-date-range-row .form-label {
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.report-filters-form .report-date-range-row .form-control-sm,
+.report-filters-form .report-date-range-row .form-select-sm,
+.report-filters-form .report-date-range-row .btn-sm {
+  height: 2rem;
+  min-height: 2rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  line-height: 1.25;
+}
+
+.report-filters-form .report-date-range-row .form-select-sm {
+  padding-right: 1.75rem;
+}
+
+.report-filters-form .report-filter-actions {
+  align-self: end;
+}
+
+.report-filters-form .report-filter-actions .btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .report-period-toggle .btn {
@@ -1979,6 +2161,12 @@ body.sidebar-open {
 
 .courier-label-medicines-section > * {
   margin: 0;
+}
+
+.courier-label-delivery-method {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #000;
 }
 
 .courier-label-section-title {
@@ -2308,6 +2496,16 @@ body.sidebar-open {
 }
 
 .patient-visit-history-table tbody tr.patient-visit-history-row:hover {
+  background: rgba(13, 92, 77, 0.03);
+}
+
+.reception-table tbody tr.reception-table-row-link,
+.reception-table tbody tr.visit-detail-row {
+  cursor: pointer;
+}
+
+.reception-table tbody tr.reception-table-row-link:hover,
+.reception-table tbody tr.visit-detail-row:hover {
   background: rgba(13, 92, 77, 0.03);
 }
 
@@ -2676,9 +2874,30 @@ body.sidebar-open {
   .medicine-list-filters-row {
     grid-template-columns: minmax(12rem, 2fr) auto;
   }
+}
 
+.courier-list-filters-row {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(5.5rem, 7.25rem)
+    minmax(5.5rem, 7.75rem)
+    auto;
+}
+
+.courier-list-filters .patient-list-filter-gender .form-select {
+  min-width: 0;
+  padding-left: 0.5rem;
+  padding-right: 1.75rem;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 992px) {
   .courier-list-filters-row {
-    grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) auto;
+    grid-template-columns:
+      minmax(12rem, 1fr)
+      minmax(6.5rem, 8rem)
+      minmax(6.5rem, 8.5rem)
+      auto;
   }
 }
 
@@ -2992,32 +3211,31 @@ body.sidebar-open {
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
 
-  #patientVisitModal .visit-billing-summary-row {
-    align-items: center;
-    gap: 0.5rem;
-  }
-
   #patientVisitModal .visit-billing-summary-row dt {
-    flex: 1 1 55%;
-    min-width: 0;
-    font-size: 0.8125rem;
-    line-height: 1.25;
+    font-size: 0.75rem;
   }
 
-  #patientVisitModal .visit-billing-summary-row dd {
-    flex: 0 0 auto;
-    min-width: 5.5rem;
+  #patientVisitModal .visit-billing-summary-row {
+    grid-template-columns: minmax(0, 1fr) minmax(5.25rem, 5.75rem);
+  }
+
+  #patientVisitModal .visit-billing-visit-charge-input-row .form-control,
+  #patientVisitModal .visit-medicine-total-input .form-control,
+  #patientVisitModal .visit-courier-charge-input .form-control {
+    min-width: 0;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+
+  #patientVisitModal .visit-billing-visit-charge-input-row .input-group-text,
+  #patientVisitModal .visit-medicine-total-input .input-group-text,
+  #patientVisitModal .visit-courier-charge-input .input-group-text {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
   }
 
   #patientVisitModal .patient-visit-medicines-col .visit-form-panel {
     min-height: 0;
-  }
-
-  #patientVisitModal .visit-billing-visit-charge-input-row .visit-visit-charge-input,
-  #patientVisitModal .visit-medicine-total-input,
-  #patientVisitModal .visit-courier-charge-input {
-    width: 100%;
-    max-width: 100%;
   }
 
   .medicine-manage-page .medicine-name-cell {

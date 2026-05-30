@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * @return array{q: string, status: string}
+ * @return array{q: string, status: string, delivery_method: string}
  */
 function courier_list_filters_from_request(): array
 {
@@ -12,9 +12,15 @@ function courier_list_filters_from_request(): array
         $status = '';
     }
 
+    $deliveryMethod = Visit::normalizeDeliveryMethodFilter(
+        (string) ($_GET['delivery_method'] ?? $_POST['delivery_method'] ?? ''),
+        true
+    );
+
     return [
         'q' => trim((string) ($_GET['q'] ?? $_POST['q'] ?? '')),
         'status' => $status,
+        'delivery_method' => $deliveryMethod,
     ];
 }
 
@@ -23,7 +29,7 @@ function courier_list_filters_from_request(): array
  */
 function courier_list_has_active_filters(array $listFilters): bool
 {
-    foreach (['q', 'status'] as $key) {
+    foreach (['q', 'status', 'delivery_method'] as $key) {
         if (($listFilters[$key] ?? '') !== '') {
             return true;
         }
@@ -42,6 +48,7 @@ function courier_list_query_filters(array $listFilters): array
         [
             'q' => (string) ($listFilters['q'] ?? ''),
             'status' => (string) ($listFilters['status'] ?? ''),
+            'delivery_method' => (string) ($listFilters['delivery_method'] ?? ''),
         ],
         static fn (string $value): bool => $value !== ''
     );

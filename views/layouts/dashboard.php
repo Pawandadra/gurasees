@@ -65,6 +65,7 @@ $activeNav = $activeNav ?? nav_active_id();
 <script src="<?= e(base_url('assets/js/confirm-action.js')) ?>"></script>
 <script src="<?= e(base_url('assets/js/flash-auto-dismiss.js')) ?>" defer></script>
 <script src="<?= e(base_url('assets/js/patient-search.js')) ?>" defer></script>
+<script src="<?= e(base_url('assets/js/reception-table-rows.js')) ?>" defer></script>
 <?php foreach ($pageScripts ?? [] as $script): ?>
 <script src="<?= e(base_url($script)) ?>" defer></script>
 <?php endforeach; ?>

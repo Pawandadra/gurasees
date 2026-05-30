@@ -256,8 +256,11 @@ ob_start();
                         </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($stockRows as $row): ?>
-                            <tr>
+                        <?php foreach ($stockRows as $row):
+                            $viewUrl = stock_view_url((int) $row['id'], $listFilters, $sort, $dir);
+                            ?>
+                            <tr class="reception-table-row-link" data-href="<?= e($viewUrl) ?>" tabindex="0" role="link"
+                                aria-label="<?= e(__('stock.action.view')) ?>">
                                 <td><?= table_cell($row['bill_number']) ?></td>
                                 <td><?= table_cell($row['register_number']) ?></td>
                                 <td><?= table_cell($row['supplier']) ?></td>
@@ -268,7 +271,7 @@ ob_start();
                                 <?php if ($canSeeAll): ?>
                                     <td><?= table_cell($row['submitted_by_name']) ?></td>
                                 <?php endif; ?>
-                                <td class="text-end text-nowrap">
+                                <td class="text-end text-nowrap col-actions">
                                     <div class="patient-actions justify-content-end">
                                         <a href="<?= e(stock_view_url((int) $row['id'], $listFilters, $sort, $dir)) ?>"
                                            class="patient-action-btn patient-action-view"

@@ -6,10 +6,22 @@ declare(strict_types=1);
 /** @var array<string, mixed> $old */
 /** @var string $phoneIso */
 /** @var string $phoneLocal */
+/** @var bool $showRegisteredAt */
 
+$showRegisteredAt = $showRegisteredAt ?? false;
 $genderLetter = Patient::genderToLetter((string) ($old['gender'] ?? ''));
 ?>
-<div class="patient-row patient-row-1 mb-3">
+<div class="patient-row patient-row-1 mb-3<?= $showRegisteredAt ? ' patient-row-1--register' : '' ?>">
+    <?php if ($showRegisteredAt): ?>
+        <div class="patient-field patient-field-registered-at">
+            <label for="registered_at" class="form-label"><?= e(__('patient.field.registered_at')) ?></label>
+            <input type="date" class="form-control<?= field_invalid($errors, 'registered_at') ?>"
+                   id="registered_at" name="registered_at" required
+                   max="<?= e((new DateTimeImmutable('today'))->format('Y-m-d')) ?>"
+                   value="<?= e((string) ($old['registered_at'] ?? (new DateTimeImmutable('today'))->format('Y-m-d'))) ?>">
+            <?php show_field_error($errors, 'registered_at'); ?>
+        </div>
+    <?php endif; ?>
     <div class="patient-field patient-field-name">
         <label for="name" class="form-label"><?= e(__('patient.field.name')) ?> <span class="text-danger">*</span></label>
         <input type="text" class="form-control<?= field_invalid($errors, 'name', ['_duplicate']) ?>"

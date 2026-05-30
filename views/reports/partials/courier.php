@@ -54,6 +54,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($courierRows));
                     <th><?= e(__('patient.field.name')) ?></th>
                     <th><?= e(__('patient.field.phone')) ?></th>
                     <th><?= e(__('patient.field.delivery_address')) ?></th>
+                    <th><?= e(__('visit.form.delivery_method')) ?></th>
                     <th><?= e(__('courier.field.status')) ?></th>
                     <th><?= e(__('report.col.dispatched_at')) ?></th>
                     <th class="text-end"><?= e(__('report.metric.courier_charges')) ?></th>
@@ -67,6 +68,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($courierRows));
                         <td><?= e((string) $row['patient_name']) ?></td>
                         <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
                         <td class="small"><?= e((string) $row['delivery_address']) ?></td>
+                        <td class="text-nowrap small"><?= e((string) ($row['delivery_method_label'] ?? '')) ?></td>
                         <td>
                             <?php
                             $courierBadgeClass = match ((string) $row['courier_status']) {

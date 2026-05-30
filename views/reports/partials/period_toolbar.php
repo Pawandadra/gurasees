@@ -47,7 +47,25 @@ $hasCustomDates = $hasCustomDates ?? report_has_custom_dates($filters);
                 <input type="date" class="form-control form-control-sm" id="report_date_to" name="date_to"
                        value="<?= e($filters['date_to']) ?>">
             </div>
-            <div class="col-auto d-flex flex-wrap gap-2">
+            <?php if (in_array($filters['report'], [Report::TYPE_VISITS, Report::TYPE_COURIER], true)): ?>
+                <?php
+                $reportDeliveryMethodOptions = $filters['report'] === Report::TYPE_COURIER
+                    ? Visit::remoteDeliveryMethodOptions()
+                    : Visit::deliveryMethodOptions();
+                ?>
+                <div class="col-6 col-md-4 col-lg-3 report-filter-delivery-method">
+                    <label for="report_delivery_method" class="form-label"><?= e(__('visit.form.delivery_method')) ?></label>
+                    <select class="form-select form-select-sm" id="report_delivery_method" name="delivery_method">
+                        <option value=""><?= e(__('report.filter.delivery_all')) ?></option>
+                        <?php foreach ($reportDeliveryMethodOptions as $value => $labelKey): ?>
+                            <option value="<?= e($value) ?>"<?= ($filters['delivery_method'] ?? '') === $value ? ' selected' : '' ?>>
+                                <?= e(__($labelKey)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
+            <div class="col-auto report-filter-actions d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-sm btn-reception-primary"><?= e(__('patients.list.apply')) ?></button>
                 <?php if ($hasCustomDates): ?>
                     <a href="<?= e(report_url(['report' => $filters['report'], 'period' => $filters['period']])) ?>"

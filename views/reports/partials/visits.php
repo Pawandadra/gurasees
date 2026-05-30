@@ -98,6 +98,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($visitRows));
                     <th><?= e(__('patient.field.id')) ?></th>
                     <th><?= e(__('patient.field.name')) ?></th>
                     <th><?= e(__('patient.field.phone')) ?></th>
+                    <th><?= e(__('visit.form.delivery_method')) ?></th>
                     <th class="text-end"><?= e(__('report.col.total')) ?></th>
                     <th class="text-end"><?= e(__('payment.field.paid')) ?></th>
                     <th class="text-end"><?= e(__('payment.field.balance')) ?></th>
@@ -113,6 +114,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($visitRows));
                         <td><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
                         <td><?= e((string) $row['patient_name']) ?></td>
                         <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                        <td class="text-nowrap small"><?= e((string) ($row['delivery_method_label'] ?? '')) ?></td>
                         <td class="text-end text-nowrap fw-semibold"><?= e($fmt((float) $row['grand_total'])) ?></td>
                         <td class="text-end text-nowrap"><?= e($fmt((float) $row['paid_amount'])) ?></td>
                         <td class="text-end text-nowrap">

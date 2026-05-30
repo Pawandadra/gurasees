@@ -36,6 +36,19 @@
     modalEl.addEventListener(
         'keydown',
         function (event) {
+            if (event.key === 'Escape' && modalEl.classList.contains('show')) {
+                var openList = modalEl.querySelector('.visit-medicine-search-results:not([hidden])');
+                if (openList) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    var wrap = openList.closest('.visit-medicine-search');
+                    if (wrap) {
+                        wrap.dispatchEvent(new CustomEvent('search-dropdown:close'));
+                    }
+                    return;
+                }
+            }
+
             if (event.key !== 'Enter' || !modalEl.classList.contains('show')) {
                 return;
             }

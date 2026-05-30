@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * @return array{report: string, period: string, date_from: string, date_to: string}
+ * @return array{report: string, period: string, date_from: string, date_to: string, delivery_method: string}
  */
 function report_filters_from_request(): array
 {
@@ -12,11 +12,17 @@ function report_filters_from_request(): array
         $report = Report::TYPE_OVERVIEW;
     }
 
+    $deliveryMethod = Visit::normalizeDeliveryMethodFilter(
+        (string) ($_GET['delivery_method'] ?? $_POST['delivery_method'] ?? ''),
+        $report === Report::TYPE_COURIER
+    );
+
     return [
         'report' => $report,
         'period' => Report::normalizePeriod((string) ($_GET['period'] ?? $_POST['period'] ?? Report::PERIOD_MONTH)),
         'date_from' => patient_normalize_filter_date($_GET['date_from'] ?? $_POST['date_from'] ?? null),
         'date_to' => patient_normalize_filter_date($_GET['date_to'] ?? $_POST['date_to'] ?? null),
+        'delivery_method' => $deliveryMethod,
     ];
 }
 
@@ -40,6 +46,7 @@ function report_query_filters(array $filters): array
             'period' => (string) ($filters['period'] ?? Report::PERIOD_MONTH),
             'date_from' => (string) ($filters['date_from'] ?? ''),
             'date_to' => (string) ($filters['date_to'] ?? ''),
+            'delivery_method' => (string) ($filters['delivery_method'] ?? ''),
         ],
         static fn (string $value): bool => $value !== ''
     );

@@ -10,6 +10,8 @@ declare(strict_types=1);
 $visitId = (int) $package['visit_id'];
 $lines = $package['courier_lines'] ?? [];
 $courierStatus = (string) ($package['courier_status'] ?? Courier::STATUS_PENDING);
+$deliveryMethod = (string) ($package['delivery_method'] ?? Visit::DELIVERY_COURIER);
+$deliveryMethodLabel = (string) ($package['delivery_method_label'] ?? '');
 
 ob_start();
 ?>
@@ -29,7 +31,7 @@ ob_start();
     <div class="alert alert-danger"><?= e($errorMessage) ?></div>
 <?php endif; ?>
 
-<section class="reception-card mb-4">
+<section class="reception-card mb-4 courier-package-details">
     <h2 class="reception-card-title h6 mb-3"><?= e(__('courier.view.package')) ?></h2>
     <div class="row patient-detail-grid g-3">
         <div class="col-md-6">
@@ -39,6 +41,14 @@ ob_start();
                     <dd>
                         <span class="courier-status-badge courier-status-<?= e($courierStatus) ?>">
                             <?= e(Courier::statusLabel($courierStatus)) ?>
+                        </span>
+                    </dd>
+                </div>
+                <div class="patient-detail-item">
+                    <dt><?= e(__('visit.form.delivery_method')) ?></dt>
+                    <dd>
+                        <span class="visit-delivery-badge visit-delivery-badge--<?= e($deliveryMethod) ?>">
+                            <?= e($deliveryMethodLabel) ?>
                         </span>
                     </dd>
                 </div>
@@ -87,7 +97,7 @@ ob_start();
                 <thead>
                 <tr>
                     <th scope="col"><?= e(__('medicine.field.name')) ?></th>
-                    <th scope="col" class="text-end"><?= e(__('visit.courier.column')) ?></th>
+                    <th scope="col" class="text-end"><?= e(__('visit.medicine.field.quantity')) ?></th>
                 </tr>
                 </thead>
                 <tbody>

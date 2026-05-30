@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once APP_PATH . '/models/Visit.php';
+
 final class Courier
 {
     public const STATUS_PENDING = 'pending';
@@ -14,6 +16,7 @@ final class Courier
         'patient_id' => 'p.patient_code',
         'patient' => 'p.name',
         'phone' => 'p.phone',
+        'delivery_method' => 'v.delivery_method',
         'status' => 'v.courier_status',
     ];
 
@@ -33,7 +36,7 @@ final class Courier
     }
 
     /**
-     * @param array{q?: string, status?: string} $filters
+     * @param array{q?: string, status?: string, delivery_method?: string} $filters
      * @return list<array<string, mixed>>
      */
     public static function listFiltered(array $filters = [], string $sort = 'date', string $dir = 'desc'): array
@@ -42,7 +45,7 @@ final class Courier
         $where = self::buildListWhere($filters);
         $orderSql = self::buildOrderSql($sortParams['sort'], $sortParams['dir']);
 
-        $sql = 'SELECT v.id AS visit_id, v.visited_at, v.courier_dispatched_at, v.courier_status,
+        $sql = 'SELECT v.id AS visit_id, v.visited_at, v.delivery_method, v.courier_dispatched_at, v.courier_status,
                        p.patient_code, p.name AS patient_name, p.phone,
                        p.address, p.delivery_address
                 FROM visits v
@@ -58,26 +61,14 @@ final class Courier
     }
 
     /**
-     * @return list<array<string, mixed>>
-     */
-    public static function listPackages(): array
-    {
-        return self::listFiltered([], 'date', 'desc');
-    }
-
-    /**
-     * @param array{q?: string, status?: string} $filters
+     * @param array{q?: string, status?: string, delivery_method?: string} $filters
      * @return array{sql: string, bind: array<string, mixed>}
      */
     private static function buildListWhere(array $filters): array
     {
         $parts = [
             'p.patient_code IS NOT NULL',
-            'v.courier_status IS NOT NULL',
-            'EXISTS (
-                SELECT 1 FROM visit_medicines vm
-                WHERE vm.visit_id = v.id AND vm.courier_quantity > 0
-            )',
+            Visit::remoteDeliveryPackageSql('v'),
         ];
         $bind = [];
 
@@ -90,9 +81,18 @@ final class Courier
         }
 
         $status = strtolower(trim((string) ($filters['status'] ?? '')));
-        if (in_array($status, [self::STATUS_PENDING, self::STATUS_SENT, self::STATUS_CANCELED], true)) {
+        if ($status === self::STATUS_PENDING) {
+            $parts[] = '(v.courier_status = :status OR v.courier_status IS NULL)';
+            $bind['status'] = $status;
+        } elseif (in_array($status, [self::STATUS_SENT, self::STATUS_CANCELED], true)) {
             $parts[] = 'v.courier_status = :status';
             $bind['status'] = $status;
+        }
+
+        $deliveryMethod = Visit::normalizeDeliveryMethodFilter((string) ($filters['delivery_method'] ?? ''), true);
+        if ($deliveryMethod !== '') {
+            $parts[] = 'v.delivery_method = :delivery_method';
+            $bind['delivery_method'] = $deliveryMethod;
         }
 
         return ['sql' => implode(' AND ', $parts), 'bind' => $bind];
@@ -123,18 +123,14 @@ final class Courier
         }
 
         $stmt = db()->prepare(
-            'SELECT v.id AS visit_id, v.visited_at, v.notes, v.courier_dispatched_at, v.courier_status,
+            'SELECT v.id AS visit_id, v.visited_at, v.notes, v.delivery_method, v.courier_dispatched_at, v.courier_status,
                     p.patient_code, p.name AS patient_name, p.phone,
                     p.address, p.delivery_address
              FROM visits v
              INNER JOIN patients p ON p.id = v.patient_id
              WHERE v.id = :id
                AND p.patient_code IS NOT NULL
-               AND v.courier_status IS NOT NULL
-               AND EXISTS (
-                   SELECT 1 FROM visit_medicines vm
-                   WHERE vm.visit_id = v.id AND vm.courier_quantity > 0
-               )'
+               AND ' . Visit::remoteDeliveryPackageSql('v')
         );
         $stmt->execute(['id' => $visitId]);
         $row = $stmt->fetch();
@@ -145,19 +141,6 @@ final class Courier
         $rows = self::hydratePackageRows([$row]);
 
         return $rows[0] ?? null;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public static function findPendingPackage(int $visitId): ?array
-    {
-        $package = self::findPackage($visitId);
-        if ($package === null || ($package['courier_status'] ?? '') !== self::STATUS_PENDING) {
-            return null;
-        }
-
-        return $package;
     }
 
     /**
@@ -190,7 +173,7 @@ final class Courier
                  courier_dispatched_at = NOW(),
                  courier_dispatched_by = :uid
              WHERE id = :id
-               AND courier_status = :pending
+               AND (courier_status = :pending OR courier_status IS NULL)
                AND EXISTS (
                    SELECT 1 FROM visit_medicines vm
                    WHERE vm.visit_id = visits.id AND vm.courier_quantity > 0
@@ -218,7 +201,7 @@ final class Courier
                  courier_dispatched_at = NULL,
                  courier_dispatched_by = NULL
              WHERE id = :id
-               AND courier_status = :pending
+               AND (courier_status = :pending OR courier_status IS NULL)
                AND EXISTS (
                    SELECT 1 FROM visit_medicines vm
                    WHERE vm.visit_id = visits.id AND vm.courier_quantity > 0
@@ -277,6 +260,7 @@ final class Courier
             $row['courier_lines'] = $linesByVisit[$id] ?? [];
             $row['delivery_display'] = self::formatDeliveryAddress($row);
             $row['courier_status'] = self::resolveStatus($row);
+            $row['delivery_method_label'] = Visit::deliveryMethodLabel((string) ($row['delivery_method'] ?? ''));
         }
         unset($row);
 

@@ -35,7 +35,9 @@ ob_start();
 <section class="reception-card reception-form">
     <p class="text-muted small mb-3"><?= e(__('patient.field.id')) ?>: <span class="patient-code"><?= e($code) ?></span></p>
 
-    <form method="post" action="<?= e(base_url('/patient_edit.php')) ?>" novalidate>
+    <form method="post" action="<?= e(base_url('/patient_edit.php')) ?>" id="patientEditForm" novalidate
+          data-msg-required="<?= e(__('validation.required')) ?>"
+          data-msg-address="<?= e(__('patient.error.address')) ?>">
         <?= csrf_field() ?>
         <input type="hidden" name="code" value="<?= e($code) ?>">
         <input type="hidden" name="sort" value="<?= e($sort) ?>">
@@ -56,7 +58,13 @@ ob_start();
         <?php require BASE_PATH . '/views/partials/patient_remarks_field.php'; ?>
 
         <div class="mt-3 d-flex gap-2">
-            <button type="submit" class="btn btn-reception-primary"><?= e(__('action.save')) ?></button>
+            <button type="button" class="btn btn-reception-primary confirm-action-trigger" id="patientEditSubmitBtn"
+                    data-confirm-title="<?= e(__('patient.edit.confirm_title')) ?>"
+                    data-confirm="<?= e(__('patient.edit.confirm_message')) ?>"
+                    data-confirm-label="<?= e(__('action.save')) ?>"
+                    data-confirm-variant="primary">
+                <?= e(__('action.save')) ?>
+            </button>
             <a href="<?= e($backUrl) ?>" class="btn btn-outline-secondary"><?= e(__('action.cancel')) ?></a>
         </div>
     </form>
@@ -68,5 +76,7 @@ $pageScripts = [
     'assets/js/delivery-address.js',
     'assets/js/patient-gender-input.js',
     'assets/js/patient-symptoms-picker.js',
+    'assets/js/patient-edit-form.js',
+    'assets/js/form-enter-navigation.js',
 ];
 require BASE_PATH . '/views/layouts/dashboard.php';

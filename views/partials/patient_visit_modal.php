@@ -21,7 +21,7 @@ $openVisitModal = $openVisitModal || ($isEditVisit && $visitErrors !== []);
 <div class="modal fade" id="patientVisitModal" tabindex="-1" aria-labelledby="patientVisitModalLabel" aria-hidden="true"
      data-open="<?= $openVisitModal ? '1' : '0' ?>"
      data-edit="<?= $isEditVisit ? '1' : '0' ?>">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-md-down patient-visit-modal-dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down patient-visit-modal-dialog">
         <div class="modal-content">
             <form method="post" action="<?= e(base_url('/patient_view.php')) ?>" class="visit-log-form" id="patientVisitForm"
                   data-visit-confirm="<?= e(__('visit.add.confirm_message')) ?>">
@@ -62,6 +62,21 @@ $openVisitModal = $openVisitModal || ($isEditVisit && $visitErrors !== []);
                                        value="<?= e($visitOld['notes']) ?>" maxlength="500"
                                        placeholder="<?= e(__('visit.field.notes_placeholder')) ?>">
                             </div>
+                        </div>
+                    </div>
+
+                    <?php $deliveryMethod = Visit::parseDeliveryMethod($visitOld); ?>
+                    <div class="visit-form-panel patient-visit-delivery-panel mb-3">
+                        <h3 class="visit-form-panel-title mb-2"><?= e(__('visit.form.delivery_method')) ?></h3>
+                        <div class="visit-delivery-method-group gender-toggle-group" id="visitDeliveryMethodGroup" role="group"
+                             aria-label="<?= e(__('visit.form.delivery_method')) ?>"
+                             data-initial="<?= e($deliveryMethod) ?>">
+                            <?php foreach (Visit::deliveryMethodOptions() as $value => $labelKey): ?>
+                                <input type="radio" class="btn-check" name="delivery_method"
+                                       id="visit_delivery_<?= e($value) ?>" value="<?= e($value) ?>"
+                                       autocomplete="off"<?= $deliveryMethod === $value ? ' checked' : '' ?>>
+                                <label class="btn" for="visit_delivery_<?= e($value) ?>"><?= e(__($labelKey)) ?></label>
+                            <?php endforeach; ?>
                         </div>
                     </div>
 

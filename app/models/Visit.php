@@ -10,6 +10,10 @@ require_once APP_PATH . '/models/CourierSettings.php';
 
 final class Visit
 {
+    public const DELIVERY_SELF = 'self';
+    public const DELIVERY_BY_BUS = 'by_bus';
+    public const DELIVERY_COURIER = 'courier';
+
     /** @var array<string, string> */
     private const SORT_COLUMNS = [
         'date' => 'v.visited_at',
@@ -43,7 +47,7 @@ final class Visit
     }
 
     /**
-     * @param array{q?: string, visit_date?: string, medicine_id?: string} $filters
+     * @param array{q?: string, visit_date?: string, medicine_id?: string, delivery_method?: string} $filters
      * @return array{rows: list<array<string, mixed>>, total: int}
      */
     public static function listFiltered(
@@ -75,7 +79,7 @@ final class Visit
         $total = (int) (($countStmt->fetch()['total'] ?? 0));
 
         $stmt = $pdo->prepare(
-            'SELECT v.id, v.visited_at, v.notes, v.grand_total,
+            'SELECT v.id, v.visited_at, v.notes, v.grand_total, v.delivery_method,
                     v.payment_method, v.payment_status, v.payment_paid_amount,
                     p.patient_code, p.name AS patient_name, p.age, p.gender, p.phone,
                     u.name AS recorded_by_name '
@@ -126,7 +130,7 @@ final class Visit
     }
 
     /**
-     * @param array{q?: string, visit_date?: string, medicine_id?: string} $filters
+     * @param array{q?: string, visit_date?: string, medicine_id?: string, delivery_method?: string} $filters
      * @return array{sql: string, bind: array<string, mixed>}
      */
     private static function buildListWhere(array $filters): array
@@ -155,6 +159,12 @@ final class Visit
                 WHERE vm_filter.visit_id = v.id AND vm_filter.medicine_id = :medicine_id
             )';
             $bind['medicine_id'] = (int) $medicineId;
+        }
+
+        $deliveryMethod = self::normalizeDeliveryMethodFilter((string) ($filters['delivery_method'] ?? ''));
+        if ($deliveryMethod !== '') {
+            $parts[] = 'v.delivery_method = :delivery_method';
+            $bind['delivery_method'] = $deliveryMethod;
         }
 
         return ['sql' => implode(' AND ', $parts), 'bind' => $bind];
@@ -258,6 +268,7 @@ final class Visit
         }
 
         $notes = input_string($raw['notes'] ?? '', 500);
+        $deliveryMethod = self::parseDeliveryMethod($raw);
         $lines = self::parseMedicineLines($raw);
         $medicineSubtotal = self::parseMedicineTotal($raw);
         if ($medicineSubtotal === null) {
@@ -297,11 +308,11 @@ final class Visit
         try {
             $stmt = $pdo->prepare(
                 'INSERT INTO visits (
-                    patient_id, visited_at, notes, visit_charge, visit_gst,
+                    patient_id, visited_at, notes, delivery_method, visit_charge, visit_gst,
                     medicine_total, medicine_gst, courier_charge, courier_gst, grand_total,
                     payment_method, payment_status, payment_paid_amount, recorded_by
                  ) VALUES (
-                    :patient_id, :visited_at, :notes, :visit_charge, :visit_gst,
+                    :patient_id, :visited_at, :notes, :delivery_method, :visit_charge, :visit_gst,
                     :medicine_total, :medicine_gst, :courier_charge, :courier_gst, :grand_total,
                     :payment_method, :payment_status, :payment_paid_amount, :recorded_by
                  )'
@@ -310,6 +321,7 @@ final class Visit
                 'patient_id' => $patientId,
                 'visited_at' => $visitedAt->format('Y-m-d H:i:s'),
                 'notes' => $notes !== '' ? $notes : null,
+                'delivery_method' => $deliveryMethod,
                 'visit_charge' => $visitSplit['base'],
                 'visit_gst' => $visitSplit['gst'],
                 'medicine_total' => $medicineSplit['base'],
@@ -330,7 +342,7 @@ final class Visit
                 Medicine::attachToVisit($visitId, $lines);
             }
 
-            if (CourierSettings::appliesToLines($lines)) {
+            if (self::shouldTrackDeliveryStatus($deliveryMethod, $lines)) {
                 $statusStmt = $pdo->prepare(
                     'UPDATE visits SET courier_status = :status WHERE id = :id'
                 );
@@ -438,6 +450,35 @@ final class Visit
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public static function findById(int $visitId): ?array
+    {
+        if ($visitId < 1) {
+            return null;
+        }
+
+        $stmt = db()->prepare(
+            'SELECT v.*, u.name AS recorded_by_name, p.patient_code
+             FROM visits v
+             INNER JOIN patients p ON p.id = v.patient_id
+             LEFT JOIN users u ON u.id = v.recorded_by
+             WHERE v.id = :vid AND p.patient_code IS NOT NULL
+             LIMIT 1'
+        );
+        $stmt->execute(['vid' => $visitId]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            return null;
+        }
+
+        $row['medicine_lines'] = self::medicineLinesForVisits([(int) $row['id']])[(int) $row['id']] ?? [];
+
+        return $row;
+    }
+
+    /**
      * @param array<string, mixed> $visit
      */
     public static function canModify(array $visit): bool
@@ -471,6 +512,7 @@ final class Visit
         return [
             'visited_at' => $dt !== null ? $dt->format('Y-m-d\TH:i') : '',
             'notes' => (string) ($visit['notes'] ?? ''),
+            'delivery_method' => self::resolveDeliveryMethod($visit, $medicines),
             'visit_charge' => Medicine::formatPrice($visitInclusive),
             'medicine_total' => $medicineInclusive > 0 ? Medicine::formatPrice($medicineInclusive) : '',
             'courier_charge' => $courierInclusive > 0 ? Medicine::formatPrice($courierInclusive) : '',
@@ -508,6 +550,7 @@ final class Visit
         }
 
         $notes = input_string($raw['notes'] ?? '', 500);
+        $deliveryMethod = self::parseDeliveryMethod($raw);
         $lines = self::parseMedicineLines($raw);
         $medicineSubtotal = self::parseMedicineTotal($raw);
         if ($medicineSubtotal === null) {
@@ -552,7 +595,7 @@ final class Visit
 
             $stmt = $pdo->prepare(
                 'UPDATE visits
-                 SET visited_at = :visited_at, notes = :notes,
+                 SET visited_at = :visited_at, notes = :notes, delivery_method = :delivery_method,
                      visit_charge = :visit_charge, visit_gst = :visit_gst,
                      medicine_total = :medicine_total, medicine_gst = :medicine_gst,
                      courier_charge = :courier_charge, courier_gst = :courier_gst,
@@ -563,10 +606,11 @@ final class Visit
                      courier_dispatched_at = NULL, courier_dispatched_by = NULL
                  WHERE id = :id AND patient_id = :pid'
             );
-            $courierStatus = $hasCourier ? 'pending' : null;
+            $courierStatus = self::shouldTrackDeliveryStatus($deliveryMethod, $lines) ? 'pending' : null;
             $stmt->execute([
                 'visited_at' => $visitedAt->format('Y-m-d H:i:s'),
                 'notes' => $notes !== '' ? $notes : null,
+                'delivery_method' => $deliveryMethod,
                 'visit_charge' => $visitSplit['base'],
                 'visit_gst' => $visitSplit['gst'],
                 'medicine_total' => $medicineSplit['base'],
@@ -687,6 +731,53 @@ final class Visit
     }
 
     /**
+     * @param array<string, mixed> $visit
+     * @param list<array{name: string, quantity: int, courier_quantity?: int, medicine_id?: int}> $lines
+     * @return list<array{label: string, lines: list<array{name: string, quantity: int}>}>
+     */
+    public static function medicineDetailSections(array $visit, array $lines): array
+    {
+        if ($lines === []) {
+            return [['label' => __('visit.field.medicines'), 'lines' => []]];
+        }
+
+        $deliveryMethod = self::resolveDeliveryMethod($visit, $lines);
+
+        $self = [];
+        $byBus = [];
+        $courier = [];
+
+        foreach ($lines as $line) {
+            if ((int) ($line['courier_quantity'] ?? 0) > 0) {
+                if ($deliveryMethod === self::DELIVERY_BY_BUS) {
+                    $byBus[] = $line;
+                } else {
+                    $courier[] = $line;
+                }
+            } else {
+                $self[] = $line;
+            }
+        }
+
+        if ($byBus === [] && $courier === []) {
+            return [['label' => __('visit.field.medicines'), 'lines' => $lines]];
+        }
+
+        $sections = [];
+        if ($self !== []) {
+            $sections[] = ['label' => __('visit.field.medicines'), 'lines' => $self];
+        }
+        if ($byBus !== []) {
+            $sections[] = ['label' => __('visit.medicines.by_bus'), 'lines' => $byBus];
+        }
+        if ($courier !== []) {
+            $sections[] = ['label' => __('visit.medicines.courier'), 'lines' => $courier];
+        }
+
+        return $sections;
+    }
+
+    /**
      * @param list<array<string, mixed>> $visits
      */
     public static function listHasPartialPayment(array $visits): bool
@@ -747,6 +838,92 @@ final class Visit
             ],
             PaymentSettings::visitDefaults()
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function deliveryMethodOptions(): array
+    {
+        return [
+            self::DELIVERY_SELF => 'visit.delivery.self',
+            self::DELIVERY_BY_BUS => 'visit.delivery.by_bus',
+            self::DELIVERY_COURIER => 'visit.delivery.courier',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function remoteDeliveryMethodOptions(): array
+    {
+        return array_intersect_key(
+            self::deliveryMethodOptions(),
+            array_flip([self::DELIVERY_BY_BUS, self::DELIVERY_COURIER])
+        );
+    }
+
+    public static function normalizeDeliveryMethodFilter(string $method, bool $remoteOnly = false): string
+    {
+        $method = strtolower(trim($method));
+        $options = $remoteOnly ? self::remoteDeliveryMethodOptions() : self::deliveryMethodOptions();
+
+        return isset($options[$method]) ? $method : '';
+    }
+
+    public static function isRemoteDeliveryMethod(string $method): bool
+    {
+        return in_array($method, [self::DELIVERY_BY_BUS, self::DELIVERY_COURIER], true);
+    }
+
+    public static function remoteDeliveryPackageSql(string $visitAlias = 'v'): string
+    {
+        return "{$visitAlias}.delivery_method IN ('by_bus', 'courier')
+            AND EXISTS (
+                SELECT 1 FROM visit_medicines vm_pkg
+                WHERE vm_pkg.visit_id = {$visitAlias}.id AND vm_pkg.courier_quantity > 0
+            )";
+    }
+
+    /**
+     * @param list<array{courier_quantity?: int}> $lines
+     */
+    public static function shouldTrackDeliveryStatus(string $deliveryMethod, array $lines): bool
+    {
+        return self::isRemoteDeliveryMethod($deliveryMethod) && CourierSettings::appliesToLines($lines);
+    }
+
+    public static function parseDeliveryMethod(array $raw): string
+    {
+        $method = self::normalizeDeliveryMethodFilter((string) ($raw['delivery_method'] ?? self::DELIVERY_SELF));
+
+        return $method !== '' ? $method : self::DELIVERY_SELF;
+    }
+
+    public static function deliveryMethodLabel(string $method): string
+    {
+        $options = self::deliveryMethodOptions();
+
+        return __($options[$method] ?? 'visit.delivery.self');
+    }
+
+    /**
+     * @param list<array{medicine_id?: int, quantity?: int, courier_quantity?: int}> $medicines
+     */
+    private static function resolveDeliveryMethod(array $visit, array $medicines): string
+    {
+        $method = strtolower(trim((string) ($visit['delivery_method'] ?? '')));
+        if ($method === self::DELIVERY_BY_BUS || $method === self::DELIVERY_COURIER) {
+            return $method;
+        }
+
+        foreach ($medicines as $line) {
+            if (($line['courier_quantity'] ?? 0) > 0) {
+                return self::DELIVERY_COURIER;
+            }
+        }
+
+        return self::DELIVERY_SELF;
     }
 
     private static function parseVisitCharge(array $raw): ?float

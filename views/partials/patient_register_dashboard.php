@@ -53,6 +53,7 @@ $recentColumns = [
 
         <form method="post" action="<?= e(base_url('/dashboard.php')) ?>" id="patientRegisterForm" novalidate
               data-msg-required="<?= e(__('validation.required')) ?>"
+              data-msg-address="<?= e(__('patient.error.address')) ?>"
               data-msg-confirm="<?= e(__('patient.register.confirm_message')) ?>"
               data-msg-success="<?= e(__('patient.register.success_message')) ?>"
               data-msg-duplicate="<?= e(__('patient.register.duplicate')) ?>"
@@ -60,7 +61,10 @@ $recentColumns = [
               data-patient-view-base="<?= e(base_url('/patient_view.php')) ?>">
             <?= csrf_field() ?>
 
-            <?php require BASE_PATH . '/views/partials/patient_form_row1.php'; ?>
+            <?php
+            $showRegisteredAt = true;
+            require BASE_PATH . '/views/partials/patient_form_row1.php';
+            ?>
             <?php require BASE_PATH . '/views/partials/patient_address_row.php'; ?>
             <?php
             if (!class_exists('PaymentSettings', false)) {

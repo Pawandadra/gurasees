@@ -3,16 +3,16 @@
 declare(strict_types=1);
 
 /** @var string $patientCode */
-/** @var string $sort */
-/** @var string $dir */
-/** @var array<string, scalar|null> $actionExtra */
-
-$actionExtra = $actionExtra ?? [];
-$viewUrl = base_url('/patient_view.php?' . http_build_query(['code' => $patientCode]) . '&' . patient_action_query($sort, $dir, $actionExtra));
+/** @var int $visitId */
 ?>
 <div class="patient-actions">
-    <a href="<?= e($viewUrl) ?>" class="patient-action-btn patient-action-view"
-       title="<?= e(__('visits.action.view_patient')) ?>" aria-label="<?= e(__('visits.action.view_patient')) ?>">
-        <?php require BASE_PATH . '/views/partials/icons/view.php'; ?>
-    </a>
+    <?php if ($visitId > 0): ?>
+        <button type="button" class="patient-action-btn patient-action-view visit-detail-trigger"
+                data-visit-id="<?= e((string) $visitId) ?>"
+                data-patient-code="<?= e($patientCode) ?>"
+                title="<?= e(__('visit.detail.view')) ?>"
+                aria-label="<?= e(__('visit.detail.view')) ?>">
+            <?php require BASE_PATH . '/views/partials/icons/view.php'; ?>
+        </button>
+    <?php endif; ?>
 </div>

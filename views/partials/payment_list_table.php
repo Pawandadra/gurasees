@@ -46,8 +46,12 @@ $textEndColumns = ['total', 'without_gst', 'gst', 'paid', 'balance'];
             }
             $status = (string) $row['payment_status'];
             $code = (string) $row['patient_code'];
+            $viewUrl = $code !== '' ? Payment::patientUrl($code) : '';
+            $rowAttrs = $viewUrl !== ''
+                ? ' class="reception-table-row-link" data-href="' . e($viewUrl) . '" tabindex="0" role="link" aria-label="' . e(__('patient.action.view')) . '"'
+                : '';
             ?>
-            <tr>
+            <tr<?= $rowAttrs ?>>
                 <td<?= responsive_col_attr('payments', 'patient_id') ?>><span class="patient-code"><?= e($code) ?></span></td>
                 <td<?= responsive_col_attr('payments', 'patient') ?>><?= e((string) $row['patient_name']) ?></td>
                 <td<?= responsive_col_attr('payments', 'phone', ['text-nowrap']) ?>><?= e(phone_format_display((string) $row['phone'])) ?></td>

@@ -31,7 +31,7 @@ $visitOld = $visitOld ?? [];
     <?php endif; ?>
 
     <div class="row g-3 g-md-4 align-items-stretch patient-visit-billing-row">
-        <div class="col-md-7 patient-visit-medicines-col">
+        <div class="col-lg-7 col-md-6 patient-visit-medicines-col">
             <div class="visit-form-panel h-100">
                 <div class="visit-form-panel-header">
                     <h3 class="visit-form-panel-title mb-0"><?= e(__('visit.medicine.title')) ?></h3>
@@ -85,7 +85,7 @@ $visitOld = $visitOld ?? [];
             </div>
         </div>
 
-        <div class="col-md-5 patient-visit-charges-col">
+        <div class="col-lg-5 col-md-6 patient-visit-charges-col">
             <div class="visit-summary-panel">
                 <h3 class="visit-form-panel-title mb-3"><?= e(__('visit.form.charges_summary')) ?></h3>
 

@@ -133,7 +133,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($paymentRows));
                         <td class="text-nowrap small"><?= e(Payment::formatDate((string) $row['payment_date'])) ?></td>
                         <td><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
                         <td><?= e((string) $row['patient_name']) ?></td>
-                        <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                        <td class="text-nowrap"><?= phone_format_patient_phones_html((string) $row['phone'], isset($row['additional_phone']) ? (string) $row['additional_phone'] : null) ?></td>
                         <td class="small"><?= e(Payment::typeLabel((string) $row['payment_type'])) ?></td>
                         <td class="text-end text-nowrap"><?= e($fmt((float) $row['total_amount'])) ?></td>
                         <td class="text-end text-nowrap"><?= e($fmt((float) $row['paid_amount'])) ?></td>

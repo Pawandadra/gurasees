@@ -54,7 +54,7 @@ $textEndColumns = ['total', 'without_gst', 'gst', 'paid', 'balance'];
             <tr<?= $rowAttrs ?>>
                 <td<?= responsive_col_attr('payments', 'patient_id') ?>><span class="patient-code"><?= e($code) ?></span></td>
                 <td<?= responsive_col_attr('payments', 'patient') ?>><?= e((string) $row['patient_name']) ?></td>
-                <td<?= responsive_col_attr('payments', 'phone', ['text-nowrap']) ?>><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                <td<?= responsive_col_attr('payments', 'phone', ['text-nowrap']) ?>><?= phone_format_patient_phones_html((string) $row['phone'], isset($row['additional_phone']) ? (string) $row['additional_phone'] : null) ?></td>
                 <td<?= responsive_col_attr('payments', 'type', ['small']) ?>><?= e(Payment::typeLabel((string) $row['payment_type'])) ?></td>
                 <td<?= responsive_col_attr('payments', 'total', ['text-end', 'fw-semibold', 'text-nowrap']) ?>><?= e(PaymentSettings::formatAmountDisplay((float) $row['total_amount'])) ?></td>
                 <td<?= responsive_col_attr('payments', 'without_gst', ['text-end', 'text-nowrap']) ?>><?= e(PaymentSettings::formatAmountDisplay((float) $row['amount_without_gst'])) ?></td>

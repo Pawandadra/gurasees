@@ -59,6 +59,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($patientRows));
                     <th><?= e(__('patient.field.id')) ?></th>
                     <th><?= e(__('patient.field.name')) ?></th>
                     <th><?= e(__('patient.field.phone')) ?></th>
+                    <th><?= e(__('patient.field.additional_phone')) ?></th>
                     <th><?= e(__('patient.field.age')) ?></th>
                     <th><?= e(__('patient.field.gender')) ?></th>
                     <th class="text-end"><?= e(__('report.col.registration_fee')) ?></th>
@@ -72,6 +73,14 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($patientRows));
                         <td><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
                         <td><?= e((string) $row['name']) ?></td>
                         <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                        <td class="text-nowrap">
+                            <?php
+                            $additionalPhone = trim((string) ($row['additional_phone'] ?? ''));
+                            echo $additionalPhone !== ''
+                                ? e(phone_format_display($additionalPhone))
+                                : table_na();
+                            ?>
+                        </td>
                         <td><?= (int) $row['age'] ?></td>
                         <td><?= e(Patient::genderLabel((string) $row['gender'])) ?></td>
                         <td class="text-end text-nowrap">

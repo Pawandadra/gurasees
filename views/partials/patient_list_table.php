@@ -53,7 +53,7 @@ $tableSortable = $tableSortable ?? true;
                 <td<?= responsive_col_attr('patients', 'name') ?>><?= e($row['name']) ?></td>
                 <td<?= responsive_col_attr('patients', 'age') ?>><?= e((string) $row['age']) ?></td>
                 <td<?= responsive_col_attr('patients', 'gender') ?>><?= e(Patient::genderLabel((string) $row['gender'])) ?></td>
-                <td<?= responsive_col_attr('patients', 'phone') ?>><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                <td<?= responsive_col_attr('patients', 'phone') ?>><?= phone_format_patient_phones_html((string) $row['phone'], isset($row['additional_phone']) ? (string) $row['additional_phone'] : null) ?></td>
                 <td<?= responsive_col_attr('patients', 'address', ['col-address']) ?> title="<?= e((string) $row['address']) ?>"><?= table_cell($row['address'] ?? '') ?></td>
                 <td<?= responsive_col_attr('patients', 'date') ?>><?= e(Patient::formatListLastVisited($row)) ?></td>
                 <td class="col-actions">

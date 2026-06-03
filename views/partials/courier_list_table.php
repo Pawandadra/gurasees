@@ -62,7 +62,7 @@ $sortFilterQuery = $sortFilterQuery ?? [];
                 aria-label="<?= e(__('courier.action.view')) ?>">
                 <td><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
                 <td><?= e((string) $row['patient_name']) ?></td>
-                <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                <td class="text-nowrap"><?= phone_format_patient_phones_html((string) $row['phone'], isset($row['additional_phone']) ? (string) $row['additional_phone'] : null) ?></td>
                 <td class="text-nowrap small"><?= e((string) ($row['delivery_method_label'] ?? '')) ?></td>
                 <td>
                     <span class="courier-status-badge courier-status-<?= e($courierStatus) ?>">

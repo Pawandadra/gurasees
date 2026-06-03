@@ -346,14 +346,39 @@
   color: rgba(13, 92, 77, 0.65);
 }
 
-.patient-view-total-balance-value {
+.patient-view-total-balance-input-wrap {
+  width: 8.5rem;
+}
+
+.patient-view-total-balance-input {
   font-size: 1rem;
   font-weight: 700;
   color: var(--gaa-teal-dark);
+  text-align: right;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+  background-image: none !important;
+  padding-right: 0.5rem;
 }
 
-.patient-view-total-balance--due .patient-view-total-balance-value {
+.patient-view-total-balance-input.is-invalid {
+  background-image: none !important;
+  border-color: var(--bs-form-invalid-border-color, #dc3545);
+}
+
+.patient-view-total-balance-input:focus {
+  color: var(--gaa-teal-dark);
+  border-color: var(--gaa-teal);
+  box-shadow: 0 0 0 0.2rem rgba(13, 92, 77, 0.15);
+}
+
+.patient-view-total-balance--due .patient-view-total-balance-input {
   color: #b45309;
+}
+
+.patient-view-total-balance-status {
+  min-height: 1rem;
+  margin-top: 0.15rem;
 }
 
 .patient-view-total-balance--due {
@@ -826,13 +851,13 @@
 /* Patient form row 1 */
 .patient-row-1 {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) 5.5rem 4.75rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) 5.5rem 4.75rem minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem 1.25rem;
   align-items: start;
 }
 
 .patient-row-1--register {
-  grid-template-columns: 9.5rem minmax(0, 1.35fr) 5.5rem 4.75rem minmax(0, 1fr);
+  grid-template-columns: 9.5rem minmax(0, 1fr) 5.5rem 4.75rem minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .patient-field-gender .patient-gender-input {
@@ -863,11 +888,13 @@
   min-height: 2.5rem;
 }
 
-.patient-field-phone .phone-input-group {
+.patient-field-phone .phone-input-group,
+.patient-field-additional-phone .phone-input-group {
   width: 100%;
 }
 
-.patient-field-phone .form-control {
+.patient-field-phone .form-control,
+.patient-field-additional-phone .form-control {
   flex: 1;
   min-width: 0;
 }
@@ -951,11 +978,11 @@
 
 @media (max-width: 1199.98px) {
   .patient-row-1 {
-    grid-template-columns: 5.5rem 4.75rem minmax(0, 1fr);
+    grid-template-columns: 5.5rem 4.75rem minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .patient-row-1--register {
-    grid-template-columns: 9.5rem minmax(0, 1fr) 5.5rem 4.75rem minmax(0, 1fr);
+    grid-template-columns: 9.5rem minmax(0, 1fr) 5.5rem 4.75rem minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .patient-row-1:not(.patient-row-1--register) .patient-field-name {
@@ -3141,7 +3168,11 @@ body.sidebar-open {
     font-size: 0.6rem;
   }
 
-  .patient-view-page .patient-view-total-balance-value {
+  .patient-view-page .patient-view-total-balance-input-wrap {
+    width: 7.25rem;
+  }
+
+  .patient-view-page .patient-view-total-balance-input {
     font-size: 0.85rem;
   }
 

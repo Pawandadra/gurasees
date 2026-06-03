@@ -9,7 +9,13 @@
         var valueEl = root.querySelector('.phone-country-value');
         var menu = root.querySelector('.phone-country-menu');
         var options = Array.from(menu.querySelectorAll('[role="option"]'));
-        var phoneInput = root.closest('.phone-input-group')?.querySelector('input[name="phone"]');
+        var hiddenName = hidden.getAttribute('name') || 'phone_iso';
+        var phoneInputName = hiddenName.endsWith('_iso')
+            ? hiddenName.slice(0, -4)
+            : 'phone';
+        var phoneInput = root.closest('.phone-input-group')?.querySelector(
+            'input[name="' + phoneInputName + '"]'
+        );
 
         var open = false;
         var filter = '';

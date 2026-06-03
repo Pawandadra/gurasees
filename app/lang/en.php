@@ -92,6 +92,7 @@ return [
   'patient.field.gender' => 'Gender',
   'patient.field.gender_codes' => 'M, F, or O only',
   'patient.field.phone' => 'Phone no.',
+  'patient.field.additional_phone' => 'Additional phone no.',
   'patient.field.phone_country' => 'Country code',
   'patient.field.address' => 'Address',
   'patient.field.date' => 'Date',
@@ -141,9 +142,14 @@ return [
   'patient.error.gender' => 'Please select gender.',
   'patient.error.phone' => 'Please enter a valid phone number.',
   'patient.error.phone_in' => 'Please enter a valid 10-digit Indian mobile number.',
+  'patient.error.additional_phone_same' => 'Additional phone must be different from the primary phone.',
   'patient.error.address' => 'Please enter a complete address.',
   'patient.error.registered_at' => 'Please enter a valid registration date.',
   'patient.error.registered_at_future' => 'Registration date cannot be in the future.',
+  'patient.error.total_balance' => 'Please enter a valid balance amount.',
+  'patient.view.total_balance_saved' => 'Saved',
+  'patient.view.total_balance_saving' => 'Saving…',
+  'patient.view.total_balance_error' => 'Could not save balance. Please try again.',
 
   // Patients list
   'patients.list.title' => 'Patients',

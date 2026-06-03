@@ -68,6 +68,12 @@ ob_start();
                     <dt><?= e(__('patient.field.phone')) ?></dt>
                     <dd><?= e(phone_format_display((string) $package['phone'])) ?></dd>
                 </div>
+                <?php if (trim((string) ($package['additional_phone'] ?? '')) !== ''): ?>
+                    <div class="patient-detail-item">
+                        <dt><?= e(__('patient.field.additional_phone')) ?></dt>
+                        <dd><?= e(phone_format_display((string) $package['additional_phone'])) ?></dd>
+                    </div>
+                <?php endif; ?>
             </dl>
         </div>
         <div class="col-md-6">

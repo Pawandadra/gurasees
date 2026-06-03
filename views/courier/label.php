@@ -34,6 +34,12 @@ $deliveryMethodLabel = (string) ($package['delivery_method_label'] ?? '');
                 <?= e(__('patient.field.phone')) ?>:
                 <strong><?= e(phone_format_display((string) $package['phone'])) ?></strong>
             </p>
+            <?php if (trim((string) ($package['additional_phone'] ?? '')) !== ''): ?>
+                <p class="courier-label-party-phone">
+                    <?= e(__('patient.field.additional_phone')) ?>:
+                    <strong><?= e(phone_format_display((string) $package['additional_phone'])) ?></strong>
+                </p>
+            <?php endif; ?>
             <p class="courier-label-party-address"><?= nl2br(e((string) $package['delivery_display'])) ?></p>
         </header>
 

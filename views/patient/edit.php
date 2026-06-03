@@ -37,7 +37,8 @@ ob_start();
 
     <form method="post" action="<?= e(base_url('/patient_edit.php')) ?>" id="patientEditForm" novalidate
           data-msg-required="<?= e(__('validation.required')) ?>"
-          data-msg-address="<?= e(__('patient.error.address')) ?>">
+          data-msg-address="<?= e(__('patient.error.address')) ?>"
+          data-msg-additional-phone-same="<?= e(__('patient.error.additional_phone_same')) ?>">
         <?= csrf_field() ?>
         <input type="hidden" name="code" value="<?= e($code) ?>">
         <input type="hidden" name="sort" value="<?= e($sort) ?>">

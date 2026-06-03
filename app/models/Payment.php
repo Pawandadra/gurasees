@@ -425,6 +425,7 @@ final class Payment
                 p.patient_code,
                 p.name AS patient_name,
                 p.phone,
+                p.additional_phone,
                 ROUND(p.payment_amount + p.payment_gst_amount, 2) AS total_amount,
                 p.payment_amount AS amount_without_gst,
                 p.payment_gst_amount AS gst_amount,
@@ -444,6 +445,7 @@ final class Payment
                 p.patient_code,
                 p.name AS patient_name,
                 p.phone,
+                p.additional_phone,
                 v.grand_total AS total_amount,
                 ROUND(
                     v.visit_charge + v.medicine_total + v.courier_charge,
@@ -477,6 +479,7 @@ final class Payment
             'patient_code' => (string) ($row['patient_code'] ?? ''),
             'patient_name' => (string) $row['patient_name'],
             'phone' => (string) $row['phone'],
+            'additional_phone' => (string) ($row['additional_phone'] ?? ''),
             'total_amount' => $total,
             'amount_without_gst' => round((float) ($row['amount_without_gst'] ?? 0), 2),
             'gst_amount' => round((float) ($row['gst_amount'] ?? 0), 2),

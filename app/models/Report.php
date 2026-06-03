@@ -612,7 +612,7 @@ final class Report
         $total = (int) (($countStmt->fetch()['total'] ?? 0));
 
         $stmt = db()->prepare(
-            'SELECT v.id, v.visited_at, v.notes, v.delivery_method, p.patient_code, p.name AS patient_name, p.phone,
+            'SELECT v.id, v.visited_at, v.notes, v.delivery_method, p.patient_code, p.name AS patient_name, p.phone, p.additional_phone,
                     p.age, p.gender,
                     v.grand_total, v.visit_charge, v.visit_gst,
                     v.medicine_total, v.medicine_gst,
@@ -641,6 +641,7 @@ final class Report
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
                 'patient_name' => (string) $row['patient_name'],
                 'phone' => (string) $row['phone'],
+                'additional_phone' => (string) ($row['additional_phone'] ?? ''),
                 'age' => (int) $row['age'],
                 'gender' => (string) $row['gender'],
                 'delivery_method' => $deliveryFields['delivery_method'],
@@ -679,7 +680,7 @@ final class Report
         $total = (int) (($countStmt->fetch()['total'] ?? 0));
 
         $stmt = db()->prepare(
-            'SELECT p.patient_code, p.name, p.phone, p.age, p.gender, p.created_at,
+            'SELECT p.patient_code, p.name, p.phone, p.additional_phone, p.age, p.gender, p.created_at,
                     p.payment_amount, p.payment_gst_amount,
                     p.payment_method, p.payment_status, p.payment_paid_amount
              FROM patients p
@@ -696,6 +697,7 @@ final class Report
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
                 'name' => (string) $row['name'],
                 'phone' => (string) $row['phone'],
+                'additional_phone' => (string) ($row['additional_phone'] ?? ''),
                 'age' => (int) $row['age'],
                 'gender' => (string) $row['gender'],
                 'registration_fee' => $totalFee,
@@ -786,7 +788,7 @@ final class Report
         $stmt = db()->prepare(
             'SELECT v.id, v.visited_at, v.delivery_method, v.courier_status, v.courier_dispatched_at,
                     v.courier_charge, v.courier_gst,
-                    p.patient_code, p.name AS patient_name, p.phone,
+                    p.patient_code, p.name AS patient_name, p.phone, p.additional_phone,
                     p.delivery_address
              FROM visits v
              INNER JOIN patients p ON p.id = v.patient_id
@@ -803,6 +805,7 @@ final class Report
                 'patient_code' => (string) ($row['patient_code'] ?? ''),
                 'patient_name' => (string) $row['patient_name'],
                 'phone' => (string) $row['phone'],
+                'additional_phone' => (string) ($row['additional_phone'] ?? ''),
                 'delivery_address' => (string) ($row['delivery_address'] ?? ''),
                 'delivery_method' => $deliveryFields['delivery_method'],
                 'delivery_method_label' => $deliveryFields['delivery_method_label'],
@@ -832,6 +835,7 @@ final class Report
             __('patient.field.id'),
             __('patient.field.name'),
             __('patient.field.phone'),
+            __('patient.field.additional_phone'),
             __('payment.field.type'),
             __('payment.field.total'),
             __('payment.field.without_gst_col'),
@@ -848,6 +852,7 @@ final class Report
                 $row['patient_code'],
                 $row['patient_name'],
                 phone_format_display((string) $row['phone']),
+                phone_format_display((string) ($row['additional_phone'] ?? '')),
                 Payment::typeLabel((string) $row['payment_type']),
                 $row['total_amount'],
                 $row['amount_without_gst'],
@@ -875,6 +880,7 @@ final class Report
             __('patient.field.id'),
             __('patient.field.name'),
             __('patient.field.phone'),
+            __('patient.field.additional_phone'),
             __('patient.field.age'),
             __('patient.field.gender'),
             __('visit.form.delivery_method'),
@@ -896,6 +902,7 @@ final class Report
                 $row['patient_code'],
                 $row['patient_name'],
                 phone_format_display((string) $row['phone']),
+                phone_format_display((string) ($row['additional_phone'] ?? '')),
                 $row['age'],
                 Patient::genderLabel($row['gender']),
                 $row['delivery_method_label'],
@@ -930,6 +937,7 @@ final class Report
             __('patient.field.id'),
             __('patient.field.name'),
             __('patient.field.phone'),
+            __('patient.field.additional_phone'),
             __('patient.field.age'),
             __('patient.field.gender'),
             __('report.col.registration_fee'),
@@ -943,6 +951,7 @@ final class Report
                 $row['patient_code'],
                 $row['name'],
                 phone_format_display((string) $row['phone']),
+                phone_format_display((string) ($row['additional_phone'] ?? '')),
                 $row['age'],
                 Patient::genderLabel($row['gender']),
                 $row['registration_fee'],
@@ -996,6 +1005,7 @@ final class Report
             __('patient.field.id'),
             __('patient.field.name'),
             __('patient.field.phone'),
+            __('patient.field.additional_phone'),
             __('patient.field.delivery_address'),
             __('visit.form.delivery_method'),
             __('courier.field.status'),
@@ -1009,6 +1019,7 @@ final class Report
                 $row['patient_code'],
                 $row['patient_name'],
                 phone_format_display((string) $row['phone']),
+                phone_format_display((string) ($row['additional_phone'] ?? '')),
                 $row['delivery_address'],
                 $row['delivery_method_label'],
                 Courier::statusLabel($row['courier_status']),

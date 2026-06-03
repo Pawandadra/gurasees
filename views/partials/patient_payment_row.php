@@ -12,6 +12,10 @@ if (!class_exists('GstSettings', false)) {
     load_model('GstSettings');
 }
 
+if (!PaymentSettings::isEnabled()) {
+    return;
+}
+
 $paymentStatus = (string) ($old['payment_status'] ?? 'paid');
 $gstPercent = GstSettings::formatPercent(GstSettings::registrationPercent());
 $showPartialPaid = $paymentStatus === 'partial';

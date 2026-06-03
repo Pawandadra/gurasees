@@ -46,7 +46,7 @@ final class Courier
         $orderSql = self::buildOrderSql($sortParams['sort'], $sortParams['dir']);
 
         $sql = 'SELECT v.id AS visit_id, v.visited_at, v.delivery_method, v.courier_dispatched_at, v.courier_status,
-                       p.patient_code, p.name AS patient_name, p.phone,
+                       p.patient_code, p.name AS patient_name, p.phone, p.additional_phone,
                        p.address, p.delivery_address
                 FROM visits v
                 INNER JOIN patients p ON p.id = v.patient_id
@@ -124,7 +124,7 @@ final class Courier
 
         $stmt = db()->prepare(
             'SELECT v.id AS visit_id, v.visited_at, v.notes, v.delivery_method, v.courier_dispatched_at, v.courier_status,
-                    p.patient_code, p.name AS patient_name, p.phone,
+                    p.patient_code, p.name AS patient_name, p.phone, p.additional_phone,
                     p.address, p.delivery_address
              FROM visits v
              INNER JOIN patients p ON p.id = v.patient_id

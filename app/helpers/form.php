@@ -11,6 +11,8 @@ function patient_form_defaults(): array
         'gender' => '',
         'phone_iso' => 'IN',
         'phone_local' => '',
+        'additional_phone_iso' => 'IN',
+        'additional_phone_local' => '',
         'address' => '',
         'delivery_address' => '',
         'delivery_same_as_address' => '',

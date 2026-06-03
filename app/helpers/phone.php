@@ -160,6 +160,27 @@ function phone_parse_stored(string $phone): array
     return ['iso' => 'IN', 'local' => $digits];
 }
 
+/**
+ * @return array{iso: string, local: string, stored: string}
+ */
+function phone_sanitize_field(array $raw, string $fieldPrefix = '', string $defaultIso = 'IN'): array
+{
+    $isoKey = $fieldPrefix === '' ? 'phone_iso' : $fieldPrefix . 'phone_iso';
+    $localKey = $fieldPrefix === '' ? 'phone' : $fieldPrefix . 'phone';
+
+    $iso = phone_sanitize_iso((string) ($raw[$isoKey] ?? $defaultIso));
+    $local = preg_replace('/\D+/', '', (string) ($raw[$localKey] ?? ''));
+    if ($iso === 'IN' && str_starts_with($local, '0')) {
+        $local = substr($local, 1);
+    }
+
+    return [
+        'iso' => $iso,
+        'local' => $local,
+        'stored' => $local !== '' ? phone_build($iso, $local) : '',
+    ];
+}
+
 function phone_format_display(string $phone): string
 {
     $digits = preg_replace('/\D+/', '', $phone);
@@ -175,4 +196,32 @@ function phone_format_display(string $phone): string
     }
 
     return '+' . $digits;
+}
+
+function phone_format_patient_search(string $primary, ?string $additional = null): string
+{
+    $display = phone_format_display($primary);
+    $additional = trim((string) $additional);
+    if ($additional !== '') {
+        $display .= ' · ' . phone_format_display($additional);
+    }
+
+    return $display;
+}
+
+function phone_format_patient_phones_html(string $primary, ?string $additional = null): string
+{
+    $primary = trim($primary);
+    if ($primary === '') {
+        return table_na();
+    }
+
+    $html = e(phone_format_display($primary));
+    $additional = trim((string) $additional);
+    if ($additional !== '') {
+        $html .= '<br><span class="patient-additional-phone small text-muted">'
+            . e(phone_format_display($additional)) . '</span>';
+    }
+
+    return $html;
 }

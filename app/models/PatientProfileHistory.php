@@ -17,6 +17,7 @@ final class PatientProfileHistory
             'age' => (int) $patient['age'],
             'gender' => (string) $patient['gender'],
             'phone' => (string) $patient['phone'],
+            'additional_phone' => $patient['additional_phone'] ?? null,
             'address' => (string) $patient['address'],
             'delivery_address' => $patient['delivery_address'] ?? null,
             'remarks' => $patient['remarks'] ?? null,
@@ -193,6 +194,9 @@ final class PatientProfileHistory
             'age' => self::displayValue((string) ($snapshot['age'] ?? '')),
             'gender' => self::displayValue(Patient::genderLabel((string) ($snapshot['gender'] ?? ''))),
             'phone' => self::displayValue(phone_format_display((string) ($snapshot['phone'] ?? ''))),
+            'additional_phone' => self::displayValue(
+                phone_format_display((string) ($snapshot['additional_phone'] ?? ''))
+            ),
             'address' => self::displayValue((string) ($snapshot['address'] ?? '')),
             'delivery_address' => self::displayValue($delivery),
             'symptoms' => $symptomText,
@@ -212,6 +216,7 @@ final class PatientProfileHistory
             'age' => __('patient.field.age'),
             'gender' => __('patient.field.gender'),
             'phone' => __('patient.field.phone'),
+            'additional_phone' => __('patient.field.additional_phone'),
             'address' => __('patient.field.address'),
             'delivery_address' => __('patient.field.delivery_address'),
             'symptoms' => __('patient.field.symptoms'),

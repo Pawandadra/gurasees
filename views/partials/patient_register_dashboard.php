@@ -57,6 +57,7 @@ $recentColumns = [
               data-msg-confirm="<?= e(__('patient.register.confirm_message')) ?>"
               data-msg-success="<?= e(__('patient.register.success_message')) ?>"
               data-msg-duplicate="<?= e(__('patient.register.duplicate')) ?>"
+              data-msg-additional-phone-same="<?= e(__('patient.error.additional_phone_same')) ?>"
               data-view-existing="<?= e(__('patient.register.view_existing')) ?>"
               data-patient-view-base="<?= e(base_url('/patient_view.php')) ?>">
             <?= csrf_field() ?>
@@ -67,10 +68,9 @@ $recentColumns = [
             ?>
             <?php require BASE_PATH . '/views/partials/patient_address_row.php'; ?>
             <?php
-            if (!class_exists('PaymentSettings', false)) {
-                load_model('PaymentSettings');
+            if (PaymentSettings::isEnabled()) {
+                require BASE_PATH . '/views/partials/patient_payment_row.php';
             }
-            require BASE_PATH . '/views/partials/patient_payment_row.php';
             ?>
             <?php require BASE_PATH . '/views/partials/patient_symptoms_fields.php'; ?>
             <?php require BASE_PATH . '/views/partials/patient_remarks_field.php'; ?>

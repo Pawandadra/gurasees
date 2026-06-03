@@ -47,11 +47,31 @@ $genderLetter = Patient::genderToLetter((string) ($old['gender'] ?? ''));
     <div class="patient-field patient-field-phone">
         <label for="phone" class="form-label"><?= e(__('patient.field.phone')) ?> <span class="text-danger">*</span></label>
         <div class="input-group phone-input-group<?= field_invalid($errors, 'phone', ['_duplicate']) ?>">
-            <?php require BASE_PATH . '/views/partials/phone_country_picker.php'; ?>
+            <?php
+            $phoneFieldPrefix = '';
+            require BASE_PATH . '/views/partials/phone_country_picker.php';
+            ?>
             <input type="tel" class="form-control<?= field_invalid($errors, 'phone', ['_duplicate']) ?>"
                    id="phone" name="phone" value="<?= e($phoneLocal) ?>" required inputmode="numeric"
                    maxlength="<?= $phoneIso === 'IN' ? '10' : '14' ?>">
         </div>
         <?php show_field_error($errors, 'phone', true); ?>
+    </div>
+    <?php
+    $additionalPhoneIso = (string) ($old['additional_phone_iso'] ?? 'IN');
+    $additionalPhoneLocal = (string) ($old['additional_phone_local'] ?? '');
+    $phoneFieldPrefix = 'additional_';
+    $phoneIso = $additionalPhoneIso;
+    ?>
+    <div class="patient-field patient-field-additional-phone">
+        <label for="additional_phone" class="form-label"><?= e(__('patient.field.additional_phone')) ?></label>
+        <div class="input-group phone-input-group<?= field_invalid($errors, 'additional_phone') ?>">
+            <?php require BASE_PATH . '/views/partials/phone_country_picker.php'; ?>
+            <input type="tel" class="form-control<?= field_invalid($errors, 'additional_phone') ?>"
+                   id="additional_phone" name="additional_phone" value="<?= e($additionalPhoneLocal) ?>"
+                   inputmode="numeric" maxlength="<?= $additionalPhoneIso === 'IN' ? '10' : '14' ?>"
+                   autocomplete="tel">
+        </div>
+        <?php show_field_error($errors, 'additional_phone'); ?>
     </div>
 </div>

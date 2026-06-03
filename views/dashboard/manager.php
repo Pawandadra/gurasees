@@ -25,7 +25,9 @@ $pageScripts = [
     'assets/js/patient-symptoms-picker.js',
     'assets/js/form-enter-navigation.js',
     'assets/js/patient-register-confirm.js',
-    'assets/js/gst-inclusive.js',
-    'assets/js/payment-fields.js',
 ];
+if (PaymentSettings::isEnabled()) {
+    $pageScripts[] = 'assets/js/gst-inclusive.js';
+    $pageScripts[] = 'assets/js/payment-fields.js';
+}
 require BASE_PATH . '/views/layouts/dashboard.php';

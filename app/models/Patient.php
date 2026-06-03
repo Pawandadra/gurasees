@@ -40,11 +40,11 @@ final class Patient
 
             $stmt = $pdo->prepare(
                 'INSERT INTO patients (
-                    name, age, gender, phone, address, delivery_address, remarks,
+                    name, age, gender, phone, additional_phone, address, delivery_address, remarks,
                     payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount,
                     created_at
                  ) VALUES (
-                    :name, :age, :gender, :phone, :address, :delivery_address, :remarks,
+                    :name, :age, :gender, :phone, :additional_phone, :address, :delivery_address, :remarks,
                     :payment_amount, :payment_gst_amount, :payment_method, :payment_status, :payment_paid_amount,
                     :created_at
                  )'
@@ -54,6 +54,7 @@ final class Patient
                 'age' => $data['age'],
                 'gender' => $data['gender'],
                 'phone' => $data['phone'],
+                'additional_phone' => $data['additional_phone'] !== '' ? $data['additional_phone'] : null,
                 'address' => $data['address'],
                 'delivery_address' => $data['delivery_address'] !== '' ? $data['delivery_address'] : null,
                 'remarks' => $data['remarks'] !== '' ? $data['remarks'] : null,
@@ -105,7 +106,7 @@ final class Patient
         ) lv ON lv.patient_id = p.id';
 
     private const LIST_SELECT_SQL = '
-        p.patient_code, p.name, p.age, p.gender, p.phone, p.address, p.created_at,
+        p.patient_code, p.name, p.age, p.gender, p.phone, p.additional_phone, p.address, p.created_at,
         lv.last_visited_at';
 
     /**
@@ -332,8 +333,9 @@ final class Patient
         }
 
         $stmt = db()->prepare(
-            'SELECT id, patient_code, name, age, gender, phone, address, delivery_address, remarks,
-                    payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount, created_at
+            'SELECT id, patient_code, name, age, gender, phone, additional_phone, address, delivery_address, remarks,
+                    payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount,
+                    total_balance, created_at
              FROM patients
              WHERE patient_code = :code
              LIMIT 1'
@@ -359,7 +361,7 @@ final class Patient
         $codeLike = $search['bind']['code'];
 
         $stmt = db()->prepare(
-            'SELECT patient_code, name, phone
+            'SELECT patient_code, name, phone, additional_phone
              FROM patients
              WHERE patient_code IS NOT NULL
                AND ' . $search['sql'] . '
@@ -378,7 +380,10 @@ final class Patient
             $results[] = [
                 'code' => $code,
                 'name' => (string) $row['name'],
-                'phone' => phone_format_display((string) $row['phone']),
+                'phone' => phone_format_patient_search(
+                    (string) $row['phone'],
+                    isset($row['additional_phone']) ? (string) $row['additional_phone'] : null
+                ),
                 'url' => base_url('/patient_view.php?' . http_build_query(['code' => $code])),
             ];
         }
@@ -393,6 +398,7 @@ final class Patient
     public static function recordToForm(array $patient): array
     {
         $parsed = phone_parse_stored((string) $patient['phone']);
+        $additionalParsed = phone_parse_stored((string) ($patient['additional_phone'] ?? ''));
 
         $code = (string) $patient['patient_code'];
         $symptomIds = Symptom::idsForPatientCode($code);
@@ -403,6 +409,8 @@ final class Patient
             'gender' => self::genderToLetter((string) $patient['gender']),
             'phone_iso' => $parsed['iso'],
             'phone_local' => $parsed['local'],
+            'additional_phone_iso' => $additionalParsed['iso'],
+            'additional_phone_local' => $additionalParsed['local'],
             'address' => (string) $patient['address'],
             'delivery_address' => (string) ($patient['delivery_address'] ?? ''),
             'remarks' => (string) ($patient['remarks'] ?? ''),
@@ -500,6 +508,48 @@ final class Patient
     }
 
     /**
+     * Manually stored total balance for the patient profile.
+     *
+     * @param array<string, mixed> $patient
+     */
+    public static function storedTotalBalance(array $patient): float
+    {
+        return round(max(0.0, (float) ($patient['total_balance'] ?? 0)), 2);
+    }
+
+    /**
+     * @return array{ok: true, total_balance: float}|array{ok: false, errors: array<string, string>}
+     */
+    public static function updateTotalBalance(string $code, mixed $rawAmount): array
+    {
+        if (!self::isValidCode($code)) {
+            return ['ok' => false, 'errors' => ['_form' => __('patient.error.not_found')]];
+        }
+
+        $amountRaw = trim((string) $rawAmount);
+        if ($amountRaw === '' || !is_numeric($amountRaw)) {
+            return ['ok' => false, 'errors' => ['total_balance' => __('patient.error.total_balance')]];
+        }
+
+        $amount = round(max(0.0, (float) $amountRaw), 2);
+
+        try {
+            $stmt = db()->prepare(
+                'UPDATE patients SET total_balance = :amount WHERE patient_code = :code LIMIT 1'
+            );
+            $stmt->execute(['amount' => $amount, 'code' => $code]);
+        } catch (Throwable) {
+            return ['ok' => false, 'errors' => ['_form' => __('error.server')]];
+        }
+
+        if ($stmt->rowCount() < 1 && self::findByCode($code) === null) {
+            return ['ok' => false, 'errors' => ['_form' => __('patient.error.not_found')]];
+        }
+
+        return ['ok' => true, 'total_balance' => $amount];
+    }
+
+    /**
      * Registration fee still owed (pending or partial).
      *
      * @param array<string, mixed> $patient
@@ -578,6 +628,8 @@ final class Patient
             || $data['age'] !== (int) $patient['age']
             || $data['gender'] !== (string) $patient['gender']
             || $data['phone'] !== (string) $patient['phone']
+            || self::nullableText($patient['additional_phone'] ?? null)
+                !== self::nullableText($data['additional_phone'] !== '' ? $data['additional_phone'] : null)
             || $data['address'] !== (string) $patient['address']
             || self::nullableText($patient['delivery_address'] ?? null) !== self::nullableText($newDelivery)
             || self::nullableText($patient['remarks'] ?? null) !== self::nullableText($newRemarks)
@@ -698,7 +750,7 @@ final class Patient
 
             $stmt = $pdo->prepare(
                 'UPDATE patients
-                 SET name = :name, age = :age, gender = :gender, phone = :phone,
+                 SET name = :name, age = :age, gender = :gender, phone = :phone, additional_phone = :additional_phone,
                      address = :address, delivery_address = :delivery_address, remarks = :remarks
                  WHERE patient_code = :code'
             );
@@ -707,6 +759,7 @@ final class Patient
                 'age' => $data['age'],
                 'gender' => $data['gender'],
                 'phone' => $data['phone'],
+                'additional_phone' => $data['additional_phone'] !== '' ? $data['additional_phone'] : null,
                 'address' => $data['address'],
                 'delivery_address' => $data['delivery_address'] !== '' ? $data['delivery_address'] : null,
                 'remarks' => $data['remarks'] !== '' ? $data['remarks'] : null,
@@ -780,12 +833,8 @@ final class Patient
      */
     public static function sanitize(array $raw): array
     {
-        $iso = phone_sanitize_iso((string) ($raw['phone_iso'] ?? 'IN'));
-
-        $local = preg_replace('/\D+/', '', (string) ($raw['phone'] ?? ''));
-        if ($iso === 'IN' && str_starts_with($local, '0')) {
-            $local = substr($local, 1);
-        }
+        $phone = phone_sanitize_field($raw);
+        $additionalPhone = phone_sanitize_field($raw, 'additional_');
 
         $address = input_string($raw['address'] ?? '', 500);
         $deliverySame = !empty($raw['delivery_same_as_address']);
@@ -799,9 +848,12 @@ final class Patient
             'name' => input_string($raw['name'] ?? '', 120),
             'age' => (int) filter_var($raw['age'] ?? '', FILTER_VALIDATE_INT),
             'gender' => $gender,
-            'phone_iso' => $iso,
-            'phone_local' => $local,
-            'phone' => phone_build($iso, $local),
+            'phone_iso' => $phone['iso'],
+            'phone_local' => $phone['local'],
+            'phone' => $phone['stored'],
+            'additional_phone_iso' => $additionalPhone['iso'],
+            'additional_phone_local' => $additionalPhone['local'],
+            'additional_phone' => $additionalPhone['stored'],
             'address' => $address,
             'delivery_address' => $deliveryAddress,
             'remarks' => input_string($raw['remarks'] ?? '', 1000),
@@ -832,6 +884,14 @@ final class Patient
 
         if (!phone_validate_local($data['phone_iso'], $data['phone_local'])) {
             $errors['phone'] = $required;
+        }
+
+        if ($data['additional_phone_local'] !== '') {
+            if (!phone_validate_local($data['additional_phone_iso'], $data['additional_phone_local'])) {
+                $errors['additional_phone'] = __('patient.error.phone');
+            } elseif ($data['additional_phone'] === $data['phone']) {
+                $errors['additional_phone'] = __('patient.error.additional_phone_same');
+            }
         }
 
         if (mb_strlen($data['address']) < 5) {

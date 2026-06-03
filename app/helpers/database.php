@@ -107,7 +107,11 @@ function db_patient_search_clause(string $tableAlias, string $query): array
                 ' . $prefix . 'patient_code LIKE :code
                 OR ' . $prefix . 'name LIKE :name
                 OR ' . $prefix . 'phone LIKE :phone
-                OR (:has_phone_digits = 1 AND REPLACE(REPLACE(REPLACE(' . $prefix . 'phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits)
+                OR ' . $prefix . 'additional_phone LIKE :phone
+                OR (:has_phone_digits = 1 AND (
+                    REPLACE(REPLACE(REPLACE(' . $prefix . 'phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits
+                    OR REPLACE(REPLACE(REPLACE(' . $prefix . 'additional_phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits
+                ))
             )',
         'bind' => [
             'code' => db_like_contains(strtoupper(str_replace(' ', '', $query))),

@@ -81,7 +81,7 @@ final class Visit
         $stmt = $pdo->prepare(
             'SELECT v.id, v.visited_at, v.notes, v.grand_total, v.delivery_method,
                     v.payment_method, v.payment_status, v.payment_paid_amount,
-                    p.patient_code, p.name AS patient_name, p.age, p.gender, p.phone,
+                    p.patient_code, p.name AS patient_name, p.age, p.gender, p.phone, p.additional_phone,
                     u.name AS recorded_by_name '
             . $fromSql
             . " WHERE {$where['sql']}

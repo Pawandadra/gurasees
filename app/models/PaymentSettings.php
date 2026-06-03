@@ -27,10 +27,10 @@ final class PaymentSettings
         return max(0.0, round((float) $raw, 2));
     }
 
-    /** Registration payment fields are always available on the patient form. */
+    /** Registration payment fields appear when the default registration fee is greater than zero. */
     public static function isEnabled(): bool
     {
-        return true;
+        return self::defaultAmount() > 0;
     }
 
     public static function defaultMethod(): string

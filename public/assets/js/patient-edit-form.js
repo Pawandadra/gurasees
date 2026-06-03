@@ -8,6 +8,9 @@
 
     var requiredMsg = form.getAttribute('data-msg-required') || 'required';
     var addressMsg = form.getAttribute('data-msg-address') || 'Please enter a complete address.';
+    var additionalPhoneSameMsg =
+        form.getAttribute('data-msg-additional-phone-same') ||
+        'Additional phone must be different from the primary phone.';
 
     function fieldControl(name) {
         var el = form.elements.namedItem(name);
@@ -62,19 +65,17 @@
         return '';
     }
 
-    function phoneIso() {
-        var hidden = form.querySelector('input[name="phone_iso"]');
+    function phoneIsoFor(fieldPrefix) {
+        var name = fieldPrefix === '' ? 'phone_iso' : fieldPrefix + 'phone_iso';
+        var hidden = form.querySelector('input[name="' + name + '"]');
         return hidden ? String(hidden.value || 'IN').trim() : 'IN';
     }
 
-    function validatePhone() {
-        var phoneInput = fieldControl('phone');
-        if (!phoneInput) {
-            return false;
-        }
+    function phoneIso() {
+        return phoneIsoFor('');
+    }
 
-        var local = String(phoneInput.value || '').replace(/\D+/g, '');
-        var iso = phoneIso();
+    function validatePhoneLocal(local, iso) {
         if (iso === 'IN' && local.startsWith('0')) {
             local = local.slice(1);
         }
@@ -92,6 +93,49 @@
         }
 
         return true;
+    }
+
+    function validatePhone() {
+        var phoneInput = fieldControl('phone');
+        if (!phoneInput) {
+            return false;
+        }
+
+        var local = String(phoneInput.value || '').replace(/\D+/g, '');
+        return validatePhoneLocal(local, phoneIso());
+    }
+
+    function validateAdditionalPhone() {
+        var phoneInput = fieldControl('additional_phone');
+        if (!phoneInput) {
+            return { ok: true };
+        }
+
+        var local = String(phoneInput.value || '').replace(/\D+/g, '');
+        if (local === '') {
+            return { ok: true };
+        }
+
+        var iso = phoneIsoFor('additional_');
+        if (!validatePhoneLocal(local, iso)) {
+            return { ok: false, message: requiredMsg };
+        }
+
+        var primaryInput = fieldControl('phone');
+        if (!primaryInput) {
+            return { ok: true };
+        }
+
+        var primaryLocal = String(primaryInput.value || '').replace(/\D+/g, '');
+        if (primaryLocal === '') {
+            return { ok: true };
+        }
+
+        if (iso === phoneIso() && local === primaryLocal) {
+            return { ok: false, message: additionalPhoneSameMsg };
+        }
+
+        return { ok: true };
     }
 
     function validateForm() {
@@ -130,6 +174,16 @@
         var phoneInput = fieldControl('phone');
         if (!validatePhone()) {
             fail(phoneInput);
+        }
+
+        var additionalPhoneInput = fieldControl('additional_phone');
+        var additionalPhoneResult = validateAdditionalPhone();
+        if (!additionalPhoneResult.ok) {
+            showFieldError(additionalPhoneInput, additionalPhoneResult.message || requiredMsg);
+            valid = false;
+            if (!firstInvalid) {
+                firstInvalid = additionalPhoneInput;
+            }
         }
 
         var addressInput = fieldControl('address');

@@ -72,7 +72,7 @@ $textEndColumns = ['total', 'paid_amount', 'balance'];
                     <?php elseif ($colKey === 'gender'): ?>
                         <td<?= responsive_col_attr('visits', $colKey) ?>><?= e(Patient::genderLabel((string) ($row['gender'] ?? ''))) ?></td>
                     <?php elseif ($colKey === 'phone'): ?>
-                        <td<?= responsive_col_attr('visits', $colKey, ['text-nowrap']) ?>><?= e(phone_format_display((string) ($row['phone'] ?? ''))) ?></td>
+                        <td<?= responsive_col_attr('visits', $colKey, ['text-nowrap']) ?>><?= phone_format_patient_phones_html((string) ($row['phone'] ?? ''), isset($row['additional_phone']) ? (string) $row['additional_phone'] : null) ?></td>
                     <?php elseif ($colKey === 'medicines'): ?>
                         <td<?= responsive_col_attr('visits', $colKey, ['small', 'visit-history-medicines']) ?>><?= table_cell(Visit::formatMedicineSummary($lines)) ?></td>
                     <?php elseif ($colKey === 'delivery_method'): ?>

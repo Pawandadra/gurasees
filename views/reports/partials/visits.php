@@ -113,7 +113,7 @@ $rowsTotal = (int) ($reportData['rows_total'] ?? count($visitRows));
                         <td class="text-nowrap small"><?= e(Visit::formatVisitedAt((string) $row['visited_at'])) ?></td>
                         <td><span class="patient-code"><?= e((string) $row['patient_code']) ?></span></td>
                         <td><?= e((string) $row['patient_name']) ?></td>
-                        <td class="text-nowrap"><?= e(phone_format_display((string) $row['phone'])) ?></td>
+                        <td class="text-nowrap"><?= phone_format_patient_phones_html((string) $row['phone'], isset($row['additional_phone']) ? (string) $row['additional_phone'] : null) ?></td>
                         <td class="text-nowrap small"><?= e((string) ($row['delivery_method_label'] ?? '')) ?></td>
                         <td class="text-end text-nowrap fw-semibold"><?= e($fmt((float) $row['grand_total'])) ?></td>
                         <td class="text-end text-nowrap"><?= e($fmt((float) $row['paid_amount'])) ?></td>

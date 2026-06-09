@@ -335,7 +335,7 @@ final class Patient
         $stmt = db()->prepare(
             'SELECT id, patient_code, name, age, gender, phone, additional_phone, address, delivery_address, remarks,
                     payment_amount, payment_gst_amount, payment_method, payment_status, payment_paid_amount,
-                    total_balance, created_at
+                    created_at
              FROM patients
              WHERE patient_code = :code
              LIMIT 1'
@@ -505,48 +505,6 @@ final class Patient
         }
 
         return implode(' · ', $parts);
-    }
-
-    /**
-     * Manually stored total balance for the patient profile.
-     *
-     * @param array<string, mixed> $patient
-     */
-    public static function storedTotalBalance(array $patient): float
-    {
-        return round(max(0.0, (float) ($patient['total_balance'] ?? 0)), 2);
-    }
-
-    /**
-     * @return array{ok: true, total_balance: float}|array{ok: false, errors: array<string, string>}
-     */
-    public static function updateTotalBalance(string $code, mixed $rawAmount): array
-    {
-        if (!self::isValidCode($code)) {
-            return ['ok' => false, 'errors' => ['_form' => __('patient.error.not_found')]];
-        }
-
-        $amountRaw = trim((string) $rawAmount);
-        if ($amountRaw === '' || !is_numeric($amountRaw)) {
-            return ['ok' => false, 'errors' => ['total_balance' => __('patient.error.total_balance')]];
-        }
-
-        $amount = round(max(0.0, (float) $amountRaw), 2);
-
-        try {
-            $stmt = db()->prepare(
-                'UPDATE patients SET total_balance = :amount WHERE patient_code = :code LIMIT 1'
-            );
-            $stmt->execute(['amount' => $amount, 'code' => $code]);
-        } catch (Throwable) {
-            return ['ok' => false, 'errors' => ['_form' => __('error.server')]];
-        }
-
-        if ($stmt->rowCount() < 1 && self::findByCode($code) === null) {
-            return ['ok' => false, 'errors' => ['_form' => __('patient.error.not_found')]];
-        }
-
-        return ['ok' => true, 'total_balance' => $amount];
     }
 
     /**

@@ -17,7 +17,9 @@
     }
 
     function formatTotal(amount) {
-        return '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return typeof window.moneyFormatDisplay === 'function'
+            ? window.moneyFormatDisplay(amount)
+            : String(amount);
     }
 
     function updateTotal() {
@@ -93,13 +95,10 @@
             '</div>' +
        
             '<div class="col-md-4">' +
-            '<div class="input-group">' +
-            '<span class="input-group-text">₹</span>' +
             '<input type="number" class="form-control stock-item-amount" name="item_amounts[]" ' +
-            'min="0.01" step="0.01" placeholder="0.00" value="' +
+            'min="0.01" step="0.01" placeholder="0" value="' +
             (amount || '').replace(/"/g, '&quot;') +
             '">' +
-            '</div>' +
             '</div>' +
             '<div class="col-md-1 text-end">' +
             '<button type="button" class="btn btn-outline-secondary stock-remove-item w-100" ' +

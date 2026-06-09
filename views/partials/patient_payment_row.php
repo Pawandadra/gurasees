@@ -30,12 +30,9 @@ $showPaymentDetails = $amountValue === '' || (float) $amountValue > 0;
             <label for="payment_amount" class="form-label"><?= e(__('payment.field.amount')) ?></label>
             <div class="payment-field-body">
                 <div class="payment-field-control">
-                    <div class="input-group">
-                        <span class="input-group-text">₹</span>
-                        <input type="number" class="form-control<?= field_invalid($errors, 'payment_amount') ?>"
-                               id="payment_amount" name="payment_amount" min="0" step="0.01"
-                               value="<?= e($amountValue) ?>">
-                    </div>
+                    <input type="number" class="form-control<?= field_invalid($errors, 'payment_amount') ?>"
+                           id="payment_amount" name="payment_amount" min="0" step="0.01"
+                           value="<?= e($amountValue) ?>">
                 </div>
                 <p class="payment-field-meta payment-gst-summary small text-muted mb-0<?= $showPaymentDetails ? '' : ' d-none' ?>"
                    id="paymentGstSummary" aria-live="polite"
@@ -95,12 +92,9 @@ $showPaymentDetails = $amountValue === '' || (float) $amountValue > 0;
             </label>
             <div class="payment-field-body">
                 <div class="payment-field-control">
-                    <div class="input-group">
-                        <span class="input-group-text">₹</span>
-                        <input type="number" class="form-control payment-detail-input<?= field_invalid($errors, 'payment_paid_amount') ?>"
-                               id="payment_paid_amount" name="payment_paid_amount" min="0.01" step="0.01"
-                               value="<?= e((string) ($old['payment_paid_amount'] ?? '')) ?>">
-                    </div>
+                    <input type="number" class="form-control payment-detail-input<?= field_invalid($errors, 'payment_paid_amount') ?>"
+                           id="payment_paid_amount" name="payment_paid_amount" min="0.01" step="0.01"
+                           value="<?= e((string) ($old['payment_paid_amount'] ?? '')) ?>">
                 </div>
                 <div class="payment-field-meta payment-field-meta--spacer" aria-hidden="true"></div>
             </div>

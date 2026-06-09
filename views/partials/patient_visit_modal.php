@@ -89,7 +89,7 @@ $openVisitModal = $openVisitModal || ($isEditVisit && $visitErrors !== []);
                 <div class="modal-footer patient-visit-modal-footer border-0 pt-0">
                     <div class="patient-visit-footer-total" aria-live="polite">
                         <span class="patient-visit-footer-total-label"><?= e(__('visit.field.grand_total')) ?></span>
-                        <span class="patient-visit-footer-total-value" id="patientVisitFooterTotal">₹0.00</span>
+                        <span class="patient-visit-footer-total-value" id="patientVisitFooterTotal">0</span>
                     </div>
                     <div class="patient-visit-footer-actions">
                         <button type="button" class="btn btn-outline-secondary" id="patientVisitCancelBtn" data-bs-dismiss="modal">

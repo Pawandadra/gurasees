@@ -102,23 +102,28 @@ function db_patient_search_clause(string $tableAlias, string $query): array
     $prefix = $tableAlias !== '' ? rtrim($tableAlias, '.') . '.' : '';
     $phoneDigits = preg_replace('/\D+/', '', $query) ?? '';
 
+    $phoneLike = db_like_contains($query);
+    $phoneDigitsLike = $phoneDigits !== '' ? db_like_contains($phoneDigits) : '0';
+
     return [
         'sql' => '(
                 ' . $prefix . 'patient_code LIKE :code
                 OR ' . $prefix . 'name LIKE :name
                 OR ' . $prefix . 'phone LIKE :phone
-                OR ' . $prefix . 'additional_phone LIKE :phone
+                OR ' . $prefix . 'additional_phone LIKE :additional_phone
                 OR (:has_phone_digits = 1 AND (
                     REPLACE(REPLACE(REPLACE(' . $prefix . 'phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits
-                    OR REPLACE(REPLACE(REPLACE(' . $prefix . 'additional_phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :phone_digits
+                    OR REPLACE(REPLACE(REPLACE(' . $prefix . 'additional_phone, \' \', \'\'), \'-\', \'\'), \'+\', \'\') LIKE :additional_phone_digits
                 ))
             )',
         'bind' => [
             'code' => db_like_contains(strtoupper(str_replace(' ', '', $query))),
             'name' => db_like_contains($query),
-            'phone' => db_like_contains($query),
+            'phone' => $phoneLike,
+            'additional_phone' => $phoneLike,
             'has_phone_digits' => $phoneDigits !== '' ? 1 : 0,
-            'phone_digits' => $phoneDigits !== '' ? db_like_contains($phoneDigits) : '0',
+            'phone_digits' => $phoneDigitsLike,
+            'additional_phone_digits' => $phoneDigitsLike,
         ],
         'int_keys' => ['has_phone_digits'],
     ];

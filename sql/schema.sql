@@ -42,7 +42,6 @@ CREATE TABLE IF NOT EXISTS patients (
     payment_method ENUM('cash', 'upi', 'card', 'bank', 'other') NULL,
     payment_status ENUM('paid', 'pending', 'partial') NULL,
     payment_paid_amount DECIMAL(10, 2) NULL,
-    total_balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_patient_code (patient_code),
     INDEX idx_phone (phone),

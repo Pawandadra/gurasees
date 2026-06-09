@@ -146,10 +146,6 @@ return [
   'patient.error.address' => 'Please enter a complete address.',
   'patient.error.registered_at' => 'Please enter a valid registration date.',
   'patient.error.registered_at_future' => 'Registration date cannot be in the future.',
-  'patient.error.total_balance' => 'Please enter a valid balance amount.',
-  'patient.view.total_balance_saved' => 'Saved',
-  'patient.view.total_balance_saving' => 'Saving…',
-  'patient.view.total_balance_error' => 'Could not save balance. Please try again.',
 
   // Patients list
   'patients.list.title' => 'Patients',
@@ -490,10 +486,10 @@ return [
   'payment.summary.partial' => 'Partially paid',
   'payment.summary.outstanding' => 'Outstanding',
   'payment.summary.collected' => 'Collected: :amount',
-  'payment.summary.paid_of' => 'Paid ₹:paid of ₹:total',
-  'payment.summary.gst' => 'GST ₹:amount',
-  'payment.summary.without_gst' => 'Without GST ₹:amount',
-  'payment.summary.total' => 'Total ₹:amount',
+  'payment.summary.paid_of' => 'Paid :paid of :total',
+  'payment.summary.gst' => 'GST :amount',
+  'payment.summary.without_gst' => 'Without GST :amount',
+  'payment.summary.total' => 'Total :amount',
   'patient.field.payment' => 'Registration fee',
 
   // Reports

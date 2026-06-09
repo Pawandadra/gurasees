@@ -143,12 +143,9 @@ ob_start();
                                            value="<?= e($itemQuantity) ?>">
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="input-group">
-                                        <span class="input-group-text">₹</span>
-                                        <input type="number" class="form-control stock-item-amount" name="item_amounts[]"
-                                               min="0.01" step="0.01" placeholder="0.00"
-                                               value="<?= e($itemAmount) ?>">
-                                    </div>
+                                    <input type="number" class="form-control stock-item-amount" name="item_amounts[]"
+                                           min="0.01" step="0.01" placeholder="0"
+                                           value="<?= e($itemAmount) ?>">
                                 </div>
                                 <div class="col-md-1 text-end">
                                     <button type="button" class="btn btn-outline-secondary stock-remove-item w-100"
@@ -165,7 +162,7 @@ ob_start();
                         </button>
                         <div class="stock-bill-total ms-md-auto">
                             <span class="text-muted"><?= e(__('stock.field.total_amount')) ?>:</span>
-                            <strong class="stock-bill-total-value ms-1" id="stockBillTotal">₹0.00</strong>
+                            <strong class="stock-bill-total-value ms-1" id="stockBillTotal">0</strong>
                         </div>
                     </div>
                 </div>

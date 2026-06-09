@@ -250,12 +250,12 @@ final class PaymentSettings
 
     public static function formatAmount(float $amount): string
     {
-        return number_format($amount, 2, '.', '');
+        return money_format($amount);
     }
 
     public static function formatAmountDisplay(float $amount): string
     {
-        return '₹' . number_format($amount, 2);
+        return money_format_display($amount);
     }
 
     public static function registrationTotal(float $baseAmount, float $gstAmount): float

@@ -36,13 +36,14 @@ if (is_readable($envFile)) {
 
 $appConfig = require APP_PATH . '/config/app.php';
 
+require APP_PATH . '/helpers/errors.php';
+
 if (!$appConfig['debug']) {
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
     ini_set('html_errors', '0');
     ini_set('expose_php', '0');
     error_reporting(E_ALL);
-    require APP_PATH . '/helpers/errors.php';
     bootstrap_production_errors();
 } else {
     ini_set('display_errors', '1');
@@ -59,6 +60,7 @@ require APP_PATH . '/helpers/payment_list.php';
 require APP_PATH . '/helpers/reports.php';
 require APP_PATH . '/helpers/responsive.php';
 require APP_PATH . '/helpers/phone.php';
+require APP_PATH . '/helpers/money.php';
 require APP_PATH . '/helpers/security.php';
 require APP_PATH . '/helpers/lang.php';
 require APP_PATH . '/helpers/database.php';

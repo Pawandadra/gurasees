@@ -50,12 +50,9 @@ $showPartialPaid = $paymentStatus === 'partial';
                 <?= e(__('payment.field.paid_amount')) ?>
                 <span class="text-danger visit-payment-required-mark">*</span>
             </label>
-            <div class="input-group">
-                <span class="input-group-text">₹</span>
-                <input type="number" class="form-control visit-payment-detail-input<?= field_invalid($visitErrors, 'payment_paid_amount') ?>"
-                       id="visit_payment_paid_amount" name="payment_paid_amount" min="0.01" step="0.01"
-                       value="<?= e((string) ($visitBilling['payment_paid_amount'] ?? '')) ?>">
-            </div>
+            <input type="number" class="form-control visit-payment-detail-input<?= field_invalid($visitErrors, 'payment_paid_amount') ?>"
+                   id="visit_payment_paid_amount" name="payment_paid_amount" min="0.01" step="0.01"
+                   value="<?= e((string) ($visitBilling['payment_paid_amount'] ?? '')) ?>">
             <?php show_field_error($visitErrors, 'payment_paid_amount'); ?>
         </div>
     </div>

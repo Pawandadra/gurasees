@@ -13,7 +13,6 @@
         catalog = [];
     }
 
-    var currency = root.getAttribute('data-currency') || '₹';
     var gstVisit = parseFloat(root.getAttribute('data-gst-visit') || '0') || 0;
     var gstMedicine = parseFloat(root.getAttribute('data-gst-medicine') || '0') || 0;
     var gstCourier = parseFloat(root.getAttribute('data-gst-courier') || '0') || 0;
@@ -71,7 +70,9 @@
     }
 
     function formatMoney(value) {
-        return currency + Number(value).toFixed(2);
+        return typeof window.moneyFormatDisplay === 'function'
+            ? window.moneyFormatDisplay(value)
+            : String(Number(value).toFixed(2)).replace(/\.00$/, '');
     }
 
     var splitFn =

@@ -434,12 +434,12 @@ final class Medicine
 
     public static function formatPrice(float $price): string
     {
-        return number_format($price, 2, '.', '');
+        return money_format($price);
     }
 
     public static function formatPriceDisplay(float $price): string
     {
-        return '₹' . number_format($price, 2);
+        return money_format_display($price);
     }
 
     private static function normalizeName(string $name): string

@@ -346,39 +346,14 @@
   color: rgba(13, 92, 77, 0.65);
 }
 
-.patient-view-total-balance-input-wrap {
-  width: 8.5rem;
-}
-
-.patient-view-total-balance-input {
+.patient-view-total-balance-value {
   font-size: 1rem;
   font-weight: 700;
   color: var(--gaa-teal-dark);
-  text-align: right;
-  padding-top: 0.2rem;
-  padding-bottom: 0.2rem;
-  background-image: none !important;
-  padding-right: 0.5rem;
 }
 
-.patient-view-total-balance-input.is-invalid {
-  background-image: none !important;
-  border-color: var(--bs-form-invalid-border-color, #dc3545);
-}
-
-.patient-view-total-balance-input:focus {
-  color: var(--gaa-teal-dark);
-  border-color: var(--gaa-teal);
-  box-shadow: 0 0 0 0.2rem rgba(13, 92, 77, 0.15);
-}
-
-.patient-view-total-balance--due .patient-view-total-balance-input {
+.patient-view-total-balance--due .patient-view-total-balance-value {
   color: #b45309;
-}
-
-.patient-view-total-balance-status {
-  min-height: 1rem;
-  margin-top: 0.15rem;
 }
 
 .patient-view-total-balance--due {
@@ -425,6 +400,28 @@
 
 .patient-profile-card .patient-detail-grid .patient-symptoms-item {
   align-items: start;
+}
+
+.patient-symptom-capsules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.patient-symptom-capsule {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.22rem 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--gaa-teal-dark);
+  background: rgba(13, 92, 77, 0.08);
+  border: 1px solid rgba(13, 92, 77, 0.18);
+  border-radius: 999px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .patient-detail-list {
@@ -607,6 +604,7 @@
 }
 
 .patient-payment-row .payment-field-control > .input-group,
+.patient-payment-row .payment-field-control > .form-control,
 .patient-payment-row .payment-field-control > .form-select,
 .patient-payment-row .payment-field-control > .payment-status-group {
   width: 100%;
@@ -653,7 +651,8 @@
   display: none;
 }
 
-.visit-payment-fields .payment-field--partial .input-group {
+.visit-payment-fields .payment-field--partial .input-group,
+.visit-payment-fields .payment-field--partial .form-control {
   max-width: 10rem;
 }
 
@@ -670,7 +669,8 @@
     white-space: normal;
   }
 
-  .visit-payment-fields .payment-field--partial .input-group {
+  .visit-payment-fields .payment-field--partial .input-group,
+  .visit-payment-fields .payment-field--partial .form-control {
     max-width: none;
   }
 }
@@ -1506,14 +1506,6 @@ body.sidebar-open {
     justify-self: end;
     width: 100%;
     text-align: right;
-  }
-
-  #patientVisitModal .visit-billing-visit-charge-input-row .input-group,
-  #patientVisitModal .visit-billing-medicine-total-row .input-group,
-  #patientVisitModal .visit-billing-courier-total-row .input-group {
-    width: 100%;
-    max-width: 100%;
-    justify-content: flex-end !important;
   }
 
   #patientVisitModal .visit-billing-visit-charge-input-row .visit-visit-charge-input,
@@ -2487,8 +2479,10 @@ body.sidebar-open {
 }
 
 .patient-visit-history-table {
-  table-layout: fixed;
-  width: 100%;
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
   font-size: 1rem;
 }
 
@@ -2643,7 +2637,7 @@ body.sidebar-open {
 }
 
 .patient-view-page .visit-records-card {
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 .visit-records-date-row td {
@@ -3024,8 +3018,27 @@ body.sidebar-open {
   max-width: 100%;
   min-width: 0;
   overflow-x: auto;
+  overflow-y: visible;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive > .table,
+.table-responsive > table {
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  table-layout: auto;
+}
+
+.table-responsive > .table thead th,
+.table-responsive > table thead th {
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.table-responsive .reception-sort-link {
+  white-space: nowrap;
 }
 
 @media (max-width: 991.98px) {
@@ -3067,20 +3080,6 @@ body.sidebar-open {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-  }
-
-  .table-responsive > .reception-table,
-  .table-responsive > .reception-table-sortable,
-  .table-responsive > .courier-pending-table {
-    width: auto;
-    min-width: 44rem;
-  }
-
-  .patient-visit-history-wrap > .patient-visit-history-table {
-    width: 58rem;
-    min-width: 58rem;
-    max-width: none;
-    table-layout: fixed;
   }
 
   .reception-page-title {
@@ -3168,11 +3167,7 @@ body.sidebar-open {
     font-size: 0.6rem;
   }
 
-  .patient-view-page .patient-view-total-balance-input-wrap {
-    width: 7.25rem;
-  }
-
-  .patient-view-page .patient-view-total-balance-input {
+  .patient-view-page .patient-view-total-balance-value {
     font-size: 0.85rem;
   }
 
@@ -3250,19 +3245,12 @@ body.sidebar-open {
     grid-template-columns: minmax(0, 1fr) minmax(5.25rem, 5.75rem);
   }
 
-  #patientVisitModal .visit-billing-visit-charge-input-row .form-control,
-  #patientVisitModal .visit-medicine-total-input .form-control,
-  #patientVisitModal .visit-courier-charge-input .form-control {
+  #patientVisitModal .visit-billing-visit-charge-input-row .visit-visit-charge-input,
+  #patientVisitModal .visit-medicine-total-input,
+  #patientVisitModal .visit-courier-charge-input {
     min-width: 0;
     padding-left: 0.35rem;
     padding-right: 0.35rem;
-  }
-
-  #patientVisitModal .visit-billing-visit-charge-input-row .input-group-text,
-  #patientVisitModal .visit-medicine-total-input .input-group-text,
-  #patientVisitModal .visit-courier-charge-input .input-group-text {
-    padding-left: 0.4rem;
-    padding-right: 0.4rem;
   }
 
   #patientVisitModal .patient-visit-medicines-col .visit-form-panel {

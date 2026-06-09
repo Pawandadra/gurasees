@@ -23,8 +23,7 @@ $visitOld = $visitOld ?? [];
      data-label-empty="<?= e(__('visit.medicine.search_empty')) ?>"
      data-label-qty="<?= e(__('visit.medicine.field.quantity')) ?>"
      data-label-remove="<?= e(__('visit.medicine.remove_line')) ?>"
-     data-label-courier="<?= e(__('visit.courier.add_to_list')) ?>"
-     data-currency="₹">
+     data-label-courier="<?= e(__('visit.courier.add_to_list')) ?>">
 
     <?php if (isset($visitErrors['medicines'])): ?>
         <div class="alert alert-danger py-2 small mb-3"><?= e($visitErrors['medicines']) ?></div>
@@ -95,70 +94,61 @@ $visitOld = $visitOld ?? [];
                             <label for="visit_charge" class="form-label mb-0"><?= e(__('visit.field.visit_charge')) ?></label>
                         </dt>
                         <dd>
-                            <div class="input-group input-group-sm visit-visit-charge-input justify-content-end">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" class="form-control text-end<?= field_invalid($visitErrors, 'visit_charge') ?>"
-                                       id="visit_charge" name="visit_charge" min="0" step="0.01" required
-                                       value="<?= e((string) ($visitOld['visit_charge'] ?? ($visitBilling['visit_charge'] ?? '0'))) ?>">
-                            </div>
+                            <input type="number" class="form-control form-control-sm text-end visit-visit-charge-input<?= field_invalid($visitErrors, 'visit_charge') ?>"
+                                   id="visit_charge" name="visit_charge" min="0" step="0.01" required
+                                   value="<?= e((string) ($visitOld['visit_charge'] ?? ($visitBilling['visit_charge'] ?? '0'))) ?>">
                             <?php show_field_error($visitErrors, 'visit_charge'); ?>
                         </dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-summary-row--detail">
                         <dt id="summaryVisitGstLabel"><?= e(__('visit.field.visit_gst', ['percent' => $visitBilling['gst_visit_percent']])) ?></dt>
-                        <dd id="summaryVisitGst">₹0.00</dd>
+                        <dd id="summaryVisitGst">0</dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-base-row visit-billing-summary-row--detail">
                         <dt><?= e(__('visit.field.visit_charge')) ?> (<?= e(__('payment.field.without_gst_col')) ?>)</dt>
-                        <dd id="summaryVisitBase">₹0.00</dd>
+                        <dd id="summaryVisitBase">0</dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-medicine-total-row">
                         <dt>
                             <label for="medicine_total" class="form-label mb-0"><?= e(__('visit.field.medicine_total')) ?></label>
                         </dt>
                         <dd>
-                            <div class="input-group input-group-sm visit-medicine-total-input justify-content-end">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" class="form-control text-end<?= field_invalid($visitErrors, 'medicine_total') ?>"
-                                       id="medicine_total" name="medicine_total" min="0" step="0.01"
-                                       value="<?= e((string) ($visitOld['medicine_total'] ?? '')) ?>">
-                            </div>
+                            <input type="number" class="form-control form-control-sm text-end visit-medicine-total-input<?= field_invalid($visitErrors, 'medicine_total') ?>"
+                                   id="medicine_total" name="medicine_total" min="0" step="0.01"
+                                   value="<?= e((string) ($visitOld['medicine_total'] ?? '')) ?>">
                             <?php show_field_error($visitErrors, 'medicine_total'); ?>
                         </dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-summary-row--detail">
                         <dt id="summaryMedicineGstLabel"><?= e(__('visit.field.medicine_gst', ['percent' => $visitBilling['gst_medicine_percent']])) ?></dt>
-                        <dd id="summaryMedicineGst">₹0.00</dd>
+                        <dd id="summaryMedicineGst">0</dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-base-row visit-billing-summary-row--detail">
                         <dt><?= e(__('visit.field.medicine_total')) ?> (<?= e(__('payment.field.without_gst_col')) ?>)</dt>
-                        <dd id="summaryMedicineBase">₹0.00</dd>
+                        <dd id="summaryMedicineBase">0</dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-courier-row visit-billing-courier-total-row d-none">
                         <dt>
                             <label for="courier_charge" class="form-label mb-0"><?= e(__('visit.field.courier_charge')) ?></label>
                         </dt>
                         <dd>
-                            <div class="input-group input-group-sm visit-courier-charge-input justify-content-end">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" class="form-control text-end<?= field_invalid($visitErrors, 'courier_charge') ?>"
-                                       id="courier_charge" name="courier_charge" min="0" step="0.01"
-                                       value="<?= e((string) ($visitOld['courier_charge'] ?? '')) ?>">
-                            </div>
+                            <input type="number" class="form-control form-control-sm text-end visit-courier-charge-input<?= field_invalid($visitErrors, 'courier_charge') ?>"
+                                   id="courier_charge" name="courier_charge" min="0" step="0.01"
+                                   value="<?= e((string) ($visitOld['courier_charge'] ?? '')) ?>">
                             <?php show_field_error($visitErrors, 'courier_charge'); ?>
                         </dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-courier-row visit-billing-summary-row--detail d-none">
                         <dt id="summaryCourierGstLabel"><?= e(__('visit.field.courier_gst', ['percent' => $visitBilling['gst_courier_percent']])) ?></dt>
-                        <dd id="summaryCourierGst">₹0.00</dd>
+                        <dd id="summaryCourierGst">0</dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-courier-row visit-billing-base-row visit-billing-summary-row--detail d-none">
                         <dt><?= e(__('visit.field.courier_charge')) ?> (<?= e(__('payment.field.without_gst_col')) ?>)</dt>
-                        <dd id="summaryCourierBase">₹0.00</dd>
+                        <dd id="summaryCourierBase">0</dd>
                     </div>
                     <div class="visit-billing-summary-row visit-billing-summary-total">
                         <dt><?= e(__('visit.field.grand_total')) ?></dt>
-                        <dd id="summaryGrandTotal">₹0.00</dd>
+                        <dd id="summaryGrandTotal">0</dd>
                     </div>
                 </dl>
 
@@ -168,5 +158,5 @@ $visitOld = $visitOld ?? [];
     </div>
 
     <div id="visitMedicineHiddenInputs" class="visually-hidden" aria-hidden="true"></div>
-    <span id="summaryVisitCharge" class="visually-hidden" aria-hidden="true">₹0.00</span>
+    <span id="summaryVisitCharge" class="visually-hidden" aria-hidden="true">0</span>
 </div>

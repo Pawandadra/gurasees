@@ -32,7 +32,9 @@
     }
 
     function formatMoney(value) {
-        return '₹' + Number(value).toFixed(2);
+        return typeof window.moneyFormatAmount === 'function'
+            ? window.moneyFormatAmount(value)
+            : String(Number(value).toFixed(2)).replace(/\.00$/, '');
     }
 
     function updateGstSummary() {

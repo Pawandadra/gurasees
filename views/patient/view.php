@@ -43,31 +43,12 @@ ob_start();
     <?php $url = $backUrl; require BASE_PATH . '/views/partials/page_back.php'; ?>
     <h1 class="reception-page-title mb-0"><?= e(__('patient.view.title')) ?></h1>
     <div class="page-header-actions ms-auto d-flex align-items-center gap-2 flex-shrink-0">
-        <form method="post" action="<?= e(base_url('/patient_view.php?' . http_build_query(['code' => $code]))) ?>"
-              class="patient-view-total-balance<?= $totalBalance > 0 ? ' patient-view-total-balance--due' : '' ?>"
-              id="patientTotalBalanceForm"
-              novalidate
-              data-code="<?= e($code) ?>"
-              data-msg-saving="<?= e(__('patient.view.total_balance_saving')) ?>"
-              data-msg-saved="<?= e(__('patient.view.total_balance_saved')) ?>"
-              data-msg-error="<?= e(__('patient.view.total_balance_error')) ?>">
-            <?= csrf_field() ?>
-            <input type="hidden" name="code" value="<?= e($code) ?>">
-            <input type="hidden" name="action" value="update_total_balance">
-            <label for="patientTotalBalanceInput" class="patient-view-total-balance-label">
-                <?= e(__('patient.view.total_balance')) ?>
-            </label>
-            <div class="input-group input-group-sm patient-view-total-balance-input-wrap">
-                <span class="input-group-text">₹</span>
-                <input type="text" class="form-control patient-view-total-balance-input"
-                       id="patientTotalBalanceInput" name="total_balance"
-                       inputmode="decimal" autocomplete="off" spellcheck="false"
-                       value="<?= e(PaymentSettings::formatAmount($totalBalance)) ?>"
-                       aria-label="<?= e(__('patient.view.total_balance')) ?>">
-            </div>
-            <span class="patient-view-total-balance-status small text-muted" id="patientTotalBalanceStatus"
-                  aria-live="polite" hidden></span>
-        </form>
+        <div class="patient-view-total-balance<?= $totalBalance > 0 ? ' patient-view-total-balance--due' : '' ?>">
+            <span class="patient-view-total-balance-label"><?= e(__('patient.view.total_balance')) ?></span>
+            <span class="patient-view-total-balance-value">
+                <?= e(PaymentSettings::formatAmountDisplay($totalBalance)) ?>
+            </span>
+        </div>
         <a href="<?= e($editUrl) ?>" class="btn btn-reception-primary btn-sm"><?= e(__('patient.action.edit')) ?></a>
     </div>
 </div>
@@ -122,6 +103,18 @@ ob_start();
                     <dt><?= e(__('patient.field.delivery_address')) ?></dt>
                     <dd><?= e(Patient::formatDeliveryAddress((string) $patient['address'], $patient['delivery_address'] ?? null)) ?></dd>
                 </div>
+                <?php if ($symptomLabels !== []): ?>
+                    <div class="patient-detail-item patient-symptoms-item">
+                        <dt><?= e(__('patient.field.symptoms')) ?></dt>
+                        <dd>
+                            <div class="patient-symptom-capsules" role="list">
+                                <?php foreach ($symptomLabels as $symptomLabel): ?>
+                                    <span class="patient-symptom-capsule" role="listitem"><?= e($symptomLabel) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        </dd>
+                    </div>
+                <?php endif; ?>
                 <?php if (trim((string) ($patient['remarks'] ?? '')) !== ''): ?>
                     <div class="patient-detail-item patient-remarks-item">
                         <dt><?= e(__('patient.field.remarks')) ?></dt>
@@ -133,12 +126,6 @@ ob_start();
                     <div class="patient-detail-item">
                         <dt><?= e(__('patient.field.payment')) ?></dt>
                         <dd><?= e($paymentSummary) ?></dd>
-                    </div>
-                <?php endif; ?>
-                <?php if ($symptomLabels !== []): ?>
-                    <div class="patient-detail-item patient-symptoms-item">
-                        <dt><?= e(__('patient.field.symptoms')) ?></dt>
-                        <dd><?= e(implode(', ', $symptomLabels)) ?></dd>
                     </div>
                 <?php endif; ?>
                 <div class="patient-detail-item">
@@ -184,7 +171,6 @@ $pageScripts = [
     'assets/js/visit-payment-fields.js',
     'assets/js/patient-visit-modal.js',
     'assets/js/patient-visit-detail.js',
-    'assets/js/patient-total-balance.js',
     'assets/js/form-enter-navigation.js',
 ];
 $content = ob_get_clean();

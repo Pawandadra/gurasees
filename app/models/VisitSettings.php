@@ -43,7 +43,7 @@ final class VisitSettings
 
     public static function formatCharge(float $amount): string
     {
-        return number_format($amount, 2, '.', '');
+        return money_format($amount);
     }
 
     /**

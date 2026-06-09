@@ -32,12 +32,9 @@ ob_start();
         <div class="row g-3 align-items-end">
             <div class="col-sm-6 col-lg-4">
                 <label for="default_amount" class="form-label"><?= e(__('payment.field.default_amount')) ?></label>
-                <div class="input-group">
-                    <span class="input-group-text">₹</span>
-                    <input type="number" class="form-control<?= field_invalid($errors, 'default_amount') ?>"
-                           id="default_amount" name="default_amount" min="0" step="0.01"
-                           value="<?= e($old['default_amount']) ?>">
-                </div>
+                <input type="number" class="form-control<?= field_invalid($errors, 'default_amount') ?>"
+                       id="default_amount" name="default_amount" min="0" step="0.01"
+                       value="<?= e($old['default_amount']) ?>">
                 <?php show_field_error($errors, 'default_amount'); ?>
             </div>
             <div class="col-sm-6 col-lg-4">
@@ -74,12 +71,9 @@ ob_start();
         <div class="row g-3 align-items-end">
             <div class="col-sm-6 col-lg-4">
                 <label for="visit_default_charge" class="form-label"><?= e(__('visit.field.default_charge')) ?></label>
-                <div class="input-group">
-                    <span class="input-group-text">₹</span>
-                    <input type="number" class="form-control<?= field_invalid($errors, 'visit_default_charge') ?>"
-                           id="visit_default_charge" name="visit_default_charge" min="0" step="0.01"
-                           value="<?= e($old['visit_default_charge']) ?>">
-                </div>
+                <input type="number" class="form-control<?= field_invalid($errors, 'visit_default_charge') ?>"
+                       id="visit_default_charge" name="visit_default_charge" min="0" step="0.01"
+                       value="<?= e($old['visit_default_charge']) ?>">
                 <?php show_field_error($errors, 'visit_default_charge'); ?>
             </div>
             <div class="col-sm-6 col-lg-4">

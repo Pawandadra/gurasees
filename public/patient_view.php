@@ -42,38 +42,6 @@ if (($_GET['action'] ?? '') === 'visit_detail' && $_SERVER['REQUEST_METHOD'] ===
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'update_total_balance') {
-    header('Content-Type: application/json; charset=utf-8');
-
-    if (!csrf_verify()) {
-        http_response_code(403);
-        echo json_encode([
-            'ok' => false,
-            'errors' => ['_form' => __('error.csrf')],
-        ], JSON_THROW_ON_ERROR);
-
-        exit;
-    }
-
-    $result = Patient::updateTotalBalance($code, $_POST['total_balance'] ?? '');
-    if ($result['ok']) {
-        $balance = (float) $result['total_balance'];
-        echo json_encode([
-            'ok' => true,
-            'total_balance' => $balance,
-            'formatted' => PaymentSettings::formatAmountDisplay($balance),
-        ], JSON_THROW_ON_ERROR);
-    } else {
-        http_response_code(422);
-        echo json_encode([
-            'ok' => false,
-            'errors' => $result['errors'] ?? ['_form' => __('error.server')],
-        ], JSON_THROW_ON_ERROR);
-    }
-
-    exit;
-}
-
 $sortParams = Patient::normalizeSort(
     (string) ($_GET['sort'] ?? $_POST['sort'] ?? 'date'),
     (string) ($_GET['dir'] ?? $_POST['dir'] ?? 'desc')
@@ -228,7 +196,7 @@ $profileHistory = PatientProfileHistory::listChangesForPatient($patientId, $pati
 $successMessage = flash_get('success');
 $errorMessage = flash_get('error');
 $visits = Visit::listForPatient($patientId);
-$totalBalance = Patient::storedTotalBalance($patient);
+$totalBalance = Patient::totalOutstandingBalance($patient, $visits);
 
 view('patient/view', array_merge(
     compact(

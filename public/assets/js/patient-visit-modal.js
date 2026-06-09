@@ -76,7 +76,7 @@
     var footerTotal = document.getElementById('patientVisitFooterTotal');
     if (summaryTotal && footerTotal) {
         var syncFooterTotal = function () {
-            footerTotal.textContent = summaryTotal.textContent || '₹0.00';
+            footerTotal.textContent = summaryTotal.textContent || '0';
         };
         syncFooterTotal();
         if (typeof MutationObserver !== 'undefined') {
